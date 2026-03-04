@@ -5,6 +5,10 @@ import 'swiper/css/bundle';
 
 // Connects to data-controller="image-viewer"
 export default class extends Controller {
+  static values = {
+    initialSlide: Number
+  }
+
   connect() {
     if (this.element.swiper) {
       this.element.swiper.destroy(true, true)
@@ -23,6 +27,7 @@ export default class extends Controller {
       observeParents: true,
       direction: 'horizontal',
       loop: false,
+      initialSlide: this.initialSlideValue || 0,
 
       zoom: {
         maxRatio: zoomMaxRatio,
