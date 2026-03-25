@@ -5,7 +5,17 @@
     data-map-posts-outlet="#posts"
     class="absolute inset-0 h-full w-full"
     data-maptiler-key="<%= Rails.application.credentials.dig(:maptiler, :api_key) %>">
+
+    <%# 地図を覆うオーバーレイ要素 %>
     <div class="fixed bg-white inset-0 z-20 transition-opacity duration-1000 opacity-100" data-map-target="mapOverlay"></div>
+
+    <%# 目的地表示部分 %>
+    <div class="absolute top-0 left-0 z-10 p-3 pointer-events-none mr-11">
+      <div class="w-[min(24rem,calc(100vw-1.5rem-2.5rem))] pointer-events-auto">
+        <%= render "trips/destination_ui" %>
+      </div>
+    </div>
+
   </div>
 </div>
 <% if cookies[:terms_accepted] != "true" && cookies[:tutorials_end] != "true" && !user_signed_in? %>

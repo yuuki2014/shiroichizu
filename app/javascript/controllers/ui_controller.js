@@ -154,7 +154,7 @@ export default class extends Controller {
       case STATUS.STOPPED:
         if (this.hasPlayButtonTarget) {
           this.playButtonTarget.classList.remove("hidden")
-          this.pauseButtonContainerTarget.classList.add("translate-y-[calc(100%+6rem)]")
+          this.pauseButtonContainerTarget.classList.add("translate-y-[calc(100%+7rem)]")
           this.rightNormalButtonContainerTarget.classList.remove("translate-x-[calc(100%+8px)]")
           this.pauseButtonTarget.classList.add("hidden")
           this.leftButtonContainerTarget.classList.add("-translate-x-full")
@@ -172,13 +172,13 @@ export default class extends Controller {
         this.rightNormalButtonContainerTarget.classList.add("translate-x-[calc(100%+8px)]")
         this.rightRecordingButtonContainerTarget.classList.remove("translate-x-[calc(100%+8px)]")
         this.bottomSheetTarget.classList.add("translate-y-full")
-        this.pauseButtonContainerTarget.classList.add("translate-y-[calc(100%+6rem)]")
+        this.pauseButtonContainerTarget.classList.add("translate-y-[calc(100%+7rem)]")
         break;
       // 地図記録一時停止中になった時
       case STATUS.PAUSED:
         this.playButtonTarget.classList.remove("hidden")
         this.pauseButtonTarget.classList.add("hidden")
-        this.pauseButtonContainerTarget.classList.remove("translate-y-[calc(100%+6rem)]")
+        this.pauseButtonContainerTarget.classList.remove("translate-y-[calc(100%+7rem)]")
         break;
       case STATUS.ENDED:
         // 保存確認モーダルを表示する
@@ -196,7 +196,7 @@ export default class extends Controller {
     this.transitionEvents = new AbortController();
 
     if(!this.maplibreTopContainer){
-      this.maplibreTopContainer = document.querySelector(".maplibregl-ctrl-group")
+      this.maplibreTopContainer = document.querySelector(".maplibregl-ctrl-top-right")
     }
 
     this.maplibreTopContainer.classList.add("transition-opacity", "duration-500", "opacity-0")
@@ -211,7 +211,7 @@ export default class extends Controller {
     this.rightRecordingButtonContainerTarget.classList.remove("translate-x-[calc(100%+8px)]")
 
     if(this.maplibreTopContainer){
-      this.maplibreTopContainer = document.querySelector(".maplibregl-ctrl-group")
+      this.maplibreTopContainer = document.querySelector(".maplibregl-ctrl-top-right")
     }
     this.maplibreTopContainer.classList.remove("hidden");
     // this.maplibreTopContainer.removeEventListener("transitionend", this._handleTransitionEnd);
@@ -244,7 +244,7 @@ export default class extends Controller {
   // 一定時間後アイコンを隠す
   setHiddenTimer(){
     if(!this.maplibreTopContainer){
-      this.maplibreTopContainer = document.querySelector(".maplibregl-ctrl-group");
+      this.maplibreTopContainer = document.querySelector(".maplibregl-ctrl-top-right");
     }
 
     clearTimeout(this.hiddenTimerId);
@@ -332,9 +332,17 @@ export default class extends Controller {
     form.requestSubmit()
   }
 
+  // geolocateボタンを起動
   geolocateTrigger(){
     if(this.hasMapOutlet){
       this.mapOutlet.geolocateTrigger();
+    }
+  }
+
+  // 現在地追従にして、現在地に移動(ズーム18)
+  jumpToCurrentLocation(){
+    if(this.hasMapOutlet){
+      this.mapOutlet.jumpToCurrentLocation();
     }
   }
 

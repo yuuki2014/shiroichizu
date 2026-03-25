@@ -1,0 +1,78 @@
+<div class="space-y-2" data-controller="destination-search" data-destination-search-map-outlet="#main-map">
+
+  <%# 目的地の距離と方角 %>
+  <div class="flex items-center gap-2">
+
+    <%# 左: 検索ボタン %>
+    <%= tag.button type: "button",
+      data: { action: "click->destination-search#toggleSearch" },
+      class: "btn btn-primary shrink-0 bg-orange-200/80 hover:bg-orange-300/80 text-black p-3 rounded-full shadow-lg active:scale-95 transition" do %>
+      <%= lucide_icon('search') %>
+    <% end %>
+
+    <%# 右: 目的地表示 %>
+    <button
+      type="button"
+      class="hidden flex-1 rounded-2xl bg-gray-100/50 backdrop-blur-md shadow-lg ring-1 ring-black/5 text-left px-3 py-2"
+      data-action="click->destination-search#toggleList"
+      data-destination-search-target="destinationInfo"
+    >
+      <div class="flex items-center justify-between gap-3">
+        <div class="min-w-0 flex flex-col justify-between">
+          <div class="text-[11px] font-bold text-gray-500 leading-none">
+            次の目的地
+          </div>
+          <div class="truncate text-sm font-bold text-gray-800 leading-none mt-1" data-destination-search-target="destinationName">
+          </div>
+        </div>
+
+        <div class="shrink-0 flex items-center justify-center gap-3">
+          <div class="text-xs font-bold text-gray-700 leading-none mt-1" data-destination-search-target="destinationDistance">
+          </div>
+          <div class="bg-orange-100 rounded-full">
+            <div class="text-red-500 font-bold leading-none p-2 transition-transform duration-200" data-destination-search-target="destinationDirection">
+              <%= lucide_icon "navigation-2", class: "w-8 h-8 fill-current" %>
+            </div>
+          </div>
+        </div>
+      </div>
+    </button>
+
+  </div>
+
+  <%# 検索パネル %>
+  <div class="hidden rounded-2xl bg-gray-100/50 backdrop-blur-md shadow-lg ring-1 ring-black/5 overflow-hidden" data-destination-search-target="searchPanel">
+    <form class="flex items-center gap-2 border-b border-white/40 px-3 py-3" data-action="submit->destination-search#search">
+      <input
+        type="text"
+        aria-label="目的地を検索"
+        placeholder="目的地を検索"
+        class="w-full bg-transparent text-sm text-gray-800 outline-none placeholder:text-gray-400"
+        data-destination-search-target="input"
+      >
+      <button type="button" class="text-gray-400 hidden"
+        data-action="click->destination-search#clearSearchAll"
+        data-destination-search-target="clearSearchButton"
+      >
+        <%= lucide_icon("x", class: "w-5 h-5") %>
+      </button>
+      <button type="submit" class="text-gray-500">
+        <span data-destination-search-target="searchIcon">
+          <%= lucide_icon("search", class: "w-5 h-5") %>
+        </span>
+        <span class="hidden" data-destination-search-target="loadingIcon">
+          <%= lucide_icon("loader-circle", class: "w-5 h-5 animate-spin") %>
+        </span>
+      </button>
+    </form>
+
+    <ul class="space-y-1 overflow-y-auto px-2 py-2 empty:py-0" data-destination-search-target="results"></ul>
+  </div>
+
+  <%# 目的地リスト %>
+  <div class="hidden rounded-2xl bg-gray-100/10 backdrop-blur-md shadow-lg ring-1 ring-black/5 p-2"
+        data-destination-search-target="listPanel">
+    <ul class="space-y-2" data-destination-search-target="list">
+    </ul>
+  </div>
+</div>

@@ -118,7 +118,7 @@ function makeMaplibreFeature(feature) {
     if (props.distance >= 1000) {
       distanceText = `${(props.distance / 1000).toFixed(1)}km`;
     } else {
-      distanceText = `${props.distance}m`;
+      distanceText = `${Math.round(props.distance)}m`;
     }
   }
 
