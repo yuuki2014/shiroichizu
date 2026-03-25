@@ -7,9 +7,11 @@ import * as turf from "@turf/turf"
 
 // 定数定義
 const INITIAL_ZOOM_LEVEL = 18;    // 初期のズームレベル
+const DEBUG = false;
 
 // Connects to data-controller="base-map"
 export default class extends Controller {
+  static styleJsonCache = null;
   static outlets = [ "ui", "posts" ]
   static targets = [ "mapOverlay", "appendMarker" ]
   static values = { longitude: Number,
@@ -64,22 +66,21 @@ export default class extends Controller {
     if (!this.ac) return;
 
     const signal = this.ac.signal;
-    const apiKey = this.element.dataset.maptilerKey;
 
     try {
       // 地図のstyleを取得
-      const res = await fetch(`https://api.maptiler.com/maps/jp-mierune-dark/style.json?key=${apiKey}`, { signal: signal });
-      if(!res.ok) throw new Error(`fetch失敗: ${res.status}`);
-
-      this.styleJson = await res.json();
+      const styleJson = await this.loadStyleJson(signal);
 
       if (signal.aborted || !this.element.isConnected) return; // もし connect 中に遷移してたらreturn
+
+      this.styleJson = styleJson;
     } catch (error) {
       if (error.name === "AbortError") {
         console.debug("ページ遷移によるエラー", error);
         return;
       }
-      console.error("地図データの取得に失敗:",error);
+      console.error("style読み込み時の想定外エラー", error);
+      this.styleJson = this.getFallbackStyle();
     }
 
      // 地図の初期化
@@ -90,7 +91,54 @@ export default class extends Controller {
       zoom: INITIAL_ZOOM_LEVEL,
       attributionControl: false,
     });
+  }
 
+  async loadStyleJson(signal){
+    if(this.constructor.styleJsonCache) {
+      console.log("前回のを使用")
+      return structuredClone(this.constructor.styleJsonCache);
+    }
+
+    let apiKey = null;
+
+    if(DEBUG) {
+      apiKey = "test";
+    } else {
+      apiKey = this.element.dataset.maptilerKey;
+    }
+
+    try {
+      const res = await fetch(`https://api.maptiler.com/maps/jp-mierune-dark/style.json?key=${apiKey}`, { signal: signal });
+      if(!res.ok) throw new Error(`fetch失敗: ${res.status}`);
+
+      const styleJson = await res.json();
+      this.constructor.styleJsonCache = structuredClone(styleJson);
+      return structuredClone(styleJson);
+    } catch (error) {
+      if (error.name === "AbortError") {
+        throw error;
+      }
+      console.log("style.json の取得失敗", error);
+      return this.getFallbackStyle();
+    }
+  }
+
+  // 自前のフォールバックスタイル
+  getFallbackStyle() {
+    return {
+      version: 8,
+      sources: {
+      },
+      layers: [
+        {
+          id: "background",
+          type: "background",
+          paint: {
+            "background-color": "#d9eef2"
+          }
+        },
+      ]
+    };
   }
 
   // 渡されたgeohash配列から、結合済みのFeatureを作って返す

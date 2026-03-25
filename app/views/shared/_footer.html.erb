@@ -75,7 +75,7 @@
 
         <%# 現在地ボタン %>
         <%= tag.button type: "button",
-          data: { action: "click->ui#geolocateTrigger" },
+          data: { action: "click->ui#jumpToCurrentLocation" },
           class: "btn btn-primary bg-yellow-400/80 text-black p-3 rounded-full shadow-lg hover:bg-yellow-500/80 active:scale-95 transition" do %>
           <%= lucide_icon('locate') %>
         <% end %>
@@ -133,7 +133,7 @@
       </div>
 
       <%# 下側一時停止ボタンコンテナ %>
-      <div class="absolute bottom-full left-1/2 -translate-x-1/2 pr-4 mb-3 pointer-events-auto duration-500 translate-y-[calc(100%+6rem)]" data-ui-target="pauseButtonContainer">
+      <div class="absolute bottom-full left-1/2 -translate-x-1/2 pr-4 mb-3 pointer-events-auto duration-500 translate-y-[calc(100%+7rem)]" data-ui-target="pauseButtonContainer">
 
         <%# 停止ボタン %>
       <div id="end-trip-button-container"></div>
@@ -158,8 +158,8 @@
 
     <%# ▼▼▼ タブバーエリア ▼▼▼ %>
     <% if show_tab_bar? %>
-      <div class="mx-auto max-w-md px-4 pointer-events-auto transition-transform duration-500 pb-4" data-ui-target="bottomSheet">
-        <div class="bg-white/20 backdrop-blur-sm rounded-2xl shadow-lg px-6 py-3">
+      <div class="mx-auto max-w-md px-4 pointer-events-none transition-transform duration-500 pb-4" data-ui-target="bottomSheet">
+        <div class="bg-white/20 backdrop-blur-sm pointer-events-auto rounded-2xl shadow-lg px-6 py-3 mb-4">
           <nav class="flex">
             <%= link_to root_path, class: tab_class(root_path) do %>
               <%= lucide_icon('map') %>

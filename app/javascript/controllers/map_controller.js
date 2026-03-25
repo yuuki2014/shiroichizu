@@ -5,9 +5,6 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 import ngeohash from 'ngeohash';
 import { getDistance } from 'geolib'
 import * as turf from "@turf/turf"
-import MaplibreGeocoder from '@maplibre/maplibre-gl-geocoder'
-import '@maplibre/maplibre-gl-geocoder/dist/maplibre-gl-geocoder.css'
-import { createGeocoderApi } from "../lib/geocoder_api"
 
 // 定数定義
 const GEOHASH_PRECISION     = 9;     // 保存するgeohash精度
@@ -22,7 +19,7 @@ const DEBUG_MODE            = false;
 
 // Connects to data-controller="map"
 export default class extends BaseMapController {
-  async connect() {
+  connect() {
     if (document.documentElement.hasAttribute("data-turbo-preview")) return; // プレビューの時は戻る
 
     console.log("-----初期化実行-----")
@@ -34,15 +31,7 @@ export default class extends BaseMapController {
     this.setupEventListeners(); // イベントリスナーを登録
     if (this.ac.signal.aborted || !this.element.isConnected) return; // 途中で遷移してたらreturn
 
-    this.center = [ 139.745, 35.658 ]; // 仮の中央として東京駅
-    await this.initializeMap(this.center) // 地図初期化
-    if (!this.map) return;
-
-    this.setupMapControls(); // 地図のUI設定
-    this.setupPulseMarker(); // 現在地のパルス設定
-    this.addMarkers(); // マーカーをセット
-    this.setupMapLoadEvents(); // 地図読み込み後の処理
-    console.log("-----初期化終了-----")
+    this.setupMapProcess(); // マップ関連の処理を実行
   }
 
   // --- セットアップ関連メソッド ---
@@ -89,10 +78,22 @@ export default class extends BaseMapController {
     document.addEventListener('visibilitychange', this.onVisibilityChange, { signal: this.ac.signal });
   }
 
+  async setupMapProcess(){
+    this.center = [ 139.745, 35.658 ]; // 仮の中央として東京駅
+    await this.initializeMap(this.center) // 地図初期化
+    if (!this.map || this.ac.signal.aborted || !this.element.isConnected) return;
+
+    this.setupMapControls(); // 地図のUI設定
+    this.setupPulseMarker(); // 現在地のパルス設定
+    this.addMarkers(); // マーカーをセット
+    this.setupMapLoadEvents(); // 地図読み込み後の処理
+    console.log("-----初期化終了-----")
+  }
+
   // 地図のUI設定
   setupMapControls(){
     // アトリビューション表記
-    this.map.addControl(new maplibregl.AttributionControl({ compact: true }), "top-right");
+    this.map.addControl(new maplibregl.AttributionControl({ compact: true, customAttribution: '© <a href="https://www.geoapify.com/" target="_blank" rel="noopener noreferrer">Geoapify</a>' }), "bottom-right");
 
     // 現在地追跡機能をセット
     this.geolocate = new maplibregl.GeolocateControl({
@@ -107,7 +108,15 @@ export default class extends BaseMapController {
       }
     });
 
+    // ナビゲーションコントロールボタンを設定
+    const navControl = new maplibregl.NavigationControl({
+      showCompass: true, // コンパスを表示
+      showZoom: false,    // ズームボタンを表示
+      visualizePitch: true // マップの傾きに合わせてコンパスを傾ける
+    });
+
     this.map.addControl(this.geolocate); // 地図にgeolocateボタンを追加。右上
+    this.map.addControl(navControl); // 地図にナビゲーションボタンを追加
     this.overrideGeolocateTrigger(); // geolocateボタンのtriggerメソッドを上書き
 
     this.geolocate.on('geolocate', this.handleGeolocate); // geolocate発火時に起動する関数の設定
@@ -123,118 +132,6 @@ export default class extends BaseMapController {
         this.pulseMarker.getElement().style.display = "none";
       }
     });
-
-    this.setupGeocoder(); // 検索の設定
-  }
-
-  setupGeocoder(){
-    this.pendingMarkers = []; // 目的地候補のマーカー
-    this.destinations = []; // 目的地の情報たち
-
-    const geocoderApi = createGeocoderApi(this);
-
-    this.geocoder = new MaplibreGeocoder(
-      geocoderApi,
-      {
-        maplibregl,
-        marker: false,
-        showResultMarkers: false,
-        flyTo: false,
-        limit: 10,
-        minLength: 1,
-        showResultsWhileTyping: false,
-        debounceSearch: 500,
-        placeholder: "目的地を検索"
-      }
-    )
-
-    // 検索結果が複数ある時
-    this.geocoder.on("results", (e) => {
-      // すでに存在しているマーカーを削除
-      this.pendingMarkers.forEach(marker => {
-        marker.remove();
-      })
-      this.pendingMarkers = [];
-
-      const bounds = new maplibregl.LngLatBounds(); // 箱を用意
-      bounds.extend([this.currentLng, this.currentLat]); // 現在地を格納
-
-      // 検索結果のマーカーを地図上に表示
-      e.features.forEach(feature => {
-        const placeName = feature.place_name.split(",")[0];
-        const coords = feature.center || feature.geometry.coordinates;
-        bounds.extend(coords); // 検索結果の座標を箱に格納
-
-        // マーカーを地図に追加
-        const marker = new maplibregl.Marker({color: "#f233e9"})
-          .setLngLat(coords)
-          .addTo(this.map)
-
-        // マーカーに名前を表示
-        const el = marker.getElement();
-        const label = document.createElement('div');
-        label.textContent = placeName || feature.text || feature.properties?.name || "目的地候補";
-        label.className = "absolute -top-7 left-1/2 -translate-x-1/2 bg-white/90 px-2 py-0.5 rounded text-xs font-bold text-gray-800 whitespace-nowrap pointer-events-none shadow-sm";
-        el.appendChild(label);
-
-        // マーカーを目的地として登録するモーダルを表示
-        el.addEventListener("click", () => {
-          this.openConfirmDestinationModal(feature, coords);
-        })
-        this.pendingMarkers.push(marker);
-      })
-
-      // 全ての目的地が表示されるようにカメラを移動
-      if (!bounds.isEmpty()) {
-        this.disableGeolocateTracking();
-
-        this.map.fitBounds(bounds, {
-          padding: 80,
-          duration: 1000,
-          maxZoom: 16
-        });
-      }
-    })
-
-    // 検索結果をタップしたとき
-    this.geocoder.on("result", (e) => {
-      const feature = e.result;
-      const coords = feature.center || feature.geometry.coordinates;
-
-      this.disableGeolocateTracking(); // 現在地追従をオフ
-
-      this.map.flyTo({
-        center: coords,
-        zoom: 16
-      })
-    })
-
-    // 検索の×ボタンが押された、または入力が空になった時
-    this.geocoder.on("clear", () => {
-      // 一時的なマーカーを全て削除
-      if (this.pendingMarkers && this.pendingMarkers.length > 0) {
-        this.pendingMarkers.forEach(marker => {
-          marker.remove();
-        });
-        this.pendingMarkers = [];
-      }
-    });
-
-    this.geocoder.on("error", (e) => {
-      console.error("MaplibreGeocoder error event:", e)
-    })
-
-    this.map.addControl(this.geocoder, 'top-left'); // 検索機能を画面左上に追加
-
-    // 検索結果リストを検索窓の下に追加
-    this.destinationListContainer = document.createElement('div');
-    this.destinationListContainer.className = "maplibregl-ctrl bg-white/95 rounded-md shadow-md p-3 w-[300px] pointer-events-auto hidden";
-    this.destinationListContainer.innerHTML = `<h3 class="text-sm font-bold text-gray-700 mb-2 border-b pb-1">目的地リスト</h3><ul id="destination-list-ul" class="space-y-2"></ul>`;
-
-    const topLeftCtrl = document.querySelector('.maplibregl-ctrl-top-left');
-    if (topLeftCtrl) {
-      topLeftCtrl.appendChild(this.destinationListContainer);
-    }
   }
 
   // 現在地追従をオフ
@@ -251,147 +148,6 @@ export default class extends BaseMapController {
         }
       }
     }
-  }
-
-  // 目的地を登録するのか確認
-  openConfirmDestinationModal(feature, coords){
-    const ok = window.confirm(`ここを目的地${this.destinations.length + 1}としてセットしますか？`);
-    if (!ok) return;
-
-    this.addConfirmedDestination(feature, coords); // 目的地を登録
-
-    // 仮の目的地を削除
-    if(this.pendingMarkers && this.pendingMarkers.length > 0){
-      this.pendingMarkers.forEach(marker => {
-        marker.remove();
-      })
-      this.pendingMarkers = [];
-    }
-
-    this.geocoder.clear(); // 入力欄をクリア
-  }
-
-  // 目的地を追加
-  addConfirmedDestination(feature, coords){
-    const placeName = feature.place_name.split(",")[0] || feature.text || feature.properties?.name || "目的地"; // 目的地の名前を設定
-
-    // マーカーを追加
-    const marker = new maplibregl.Marker({color: "#42f587"})
-      .setLngLat(coords)
-      .addTo(this.map);
-
-    // マーカーに名前を追加
-    const el = marker.getElement();
-    const label = document.createElement('div');
-    label.textContent = placeName || feature.text || feature.properties?.name || "目的地候補";
-    label.className = "absolute -top-7 left-1/2 -translate-x-1/2 bg-white/90 px-2 py-0.5 rounded text-xs font-bold text-gray-800 whitespace-nowrap pointer-events-none shadow-sm";
-    el.appendChild(label);
-
-    // マーカーにイベントリスナーを登録
-    el.addEventListener('click', (e) => {
-      e.stopPropagation();
-
-      const ok = window.confirm(`目的地「${placeName}」を削除しますか？`);
-      if (!ok) return;
-
-      const currentIndex = this.destinations.findIndex(dest => dest.marker === marker); // 削除する要素の順番を取得
-
-      if (currentIndex !== -1) {
-        this.removeDestination(currentIndex); // 見つかったら配列からデータを削除
-      }
-    });
-
-    // 配列にデータを追加
-    this.destinations.push({
-      name: placeName,
-      lng: coords[0],
-      lat: coords[1],
-      marker: marker,
-      labelElement: label,
-    })
-
-    this.updateDestinationList(); // リストの描画と順番の更新
-  }
-
-  // 目的地リストをデータに合わせて描画
-  updateDestinationList() {
-    const ul = this.destinationListContainer.querySelector('#destination-list-ul');
-    ul.innerHTML = ''; // 一旦リストを空に
-
-    // 目的地がゼロになったらコンテナごと隠す
-    if (this.destinations.length === 0) {
-      this.destinationListContainer.classList.add('hidden');
-      return;
-    }
-
-    this.destinationListContainer.classList.remove('hidden'); // 目的地リストを表示
-
-    // 配列をループしてリストとマーカーを作り直す
-    this.destinations.forEach((dest, index) => {
-      const order = index + 1; // orderに順番を設定
-
-      // マーカーのラベルにテキストコンテンツに順番と名前をセット
-      dest.labelElement.textContent = `${order}. ${dest.name}`;
-
-      // リストを作成
-      const li = document.createElement('li');
-      li.className = "text-sm text-gray-800 flex items-center justify-between gap-2 group p-1 hover:bg-gray-50 rounded transition-colors";
-      li.innerHTML = `
-        <div class="flex items-center gap-2 overflow-hidden">
-          <span class="flex-shrink-0 bg-green-500 text-white w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold">${order}</span>
-          <span class="leading-tight truncate">${dest.name}</span>
-        </div>
-        <button class="flex-shrink-0 text-gray-400 hover:text-red-500 transition-opacity p-1 focus:outline-none">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M18 6L6 18M6 6l12 12"></path>
-          </svg>
-        </button>
-      `;
-
-      // 削除ボタンのイベントを設定
-      const deleteBtn = li.querySelector('button');
-
-      // 削除ボタンにイベントリスナーを設定
-      deleteBtn.addEventListener('click', (e) => {
-        e.stopPropagation(); // イベントの伝播を停止
-        this.removeDestination(index); // 目的地を削除
-      });
-
-      // リストにカメラを移動させるイベントリスナーを設定
-      li.addEventListener('click', (e) => {
-        e.stopPropagation(); // イベントの伝播を停止
-
-        const bounds = new maplibregl.LngLatBounds(); // 箱を用意
-        bounds.extend([this.currentLng, this.currentLat]); // 現在地を格納
-        bounds.extend([dest.lng, dest.lat]); // 目的地の座標を箱に格納
-
-        // boundsが全て見えるようにカメラを移動
-        if (!bounds.isEmpty()) {
-          this.disableGeolocateTracking();
-
-          this.map.fitBounds(bounds, {
-            padding: 80,
-            duration: 1000,
-            maxZoom: 16
-          });
-        }
-      });
-
-      ul.appendChild(li); // リストに要素を追加
-    });
-  }
-
-  // 目的地を削除
-  removeDestination(index) {
-    const placeName = this.destinations[index].name; // 名前を取得
-
-    const ok = window.confirm(`目的地「${placeName}」を削除しますか？`);
-    if (!ok) return;
-
-    this.destinations[index].marker.remove(); // 地図上からマーカー消去
-    this.destinations.splice(index, 1); // 配列のデータを削除
-
-    this.updateDestinationList(); // 更新後のデータで再描画
   }
 
   // geolocateボタンのtriggerメソッドを上書き
@@ -489,7 +245,86 @@ export default class extends BaseMapController {
       const empty = new Uint8Array([0, 0, 0, 0]);
       this.map.addImage(id, { width: 1, height: 1, data: empty });
     });
+
+    window.dispatchEvent(new CustomEvent("map:ready")); // map準備完了のイベントを発火
   }
+
+  jumpToCurrentLocation() {
+    if (this.currentLat != null && this.currentLng != null) {
+
+      // 現在地にズーム18で移動
+      this.map.easeTo({
+        center: [this.currentLng, this.currentLat],
+        zoom: 18,
+        duration: 1000,
+        essential: true // 強制的にアニメーション
+      });
+
+      // 移動が終わったら一回だけ起動
+      this.map.once('moveend', () => {
+        console.log("ムーブエンド")
+        console.log("ムーブエンド")
+        console.log("ムーブエンド")
+        if (this.geolocate) {
+          if (this.geolocate._watchState === 'BACKGROUND') {
+            this.geolocate._watchState = 'ACTIVE_LOCK'; // geolocateの状態を追従モードへ
+            const btn = this.geolocate._geolocateButton;
+
+            if (btn) {
+              btn.classList.remove('maplibregl-ctrl-geolocate-background');
+              btn.classList.add('maplibregl-ctrl-geolocate-active');
+            }
+          } else if(this.geolocate._watchState === 'OFF') {
+            this.geolocateTrigger();
+          }
+        }
+      });
+    } else {
+      console.warn("現在地がまだ取得できていません");
+    }
+  }
+
+  // jumpToCurrentLocation() {
+  //   if (!this.currentLat || !this.currentLng) {
+  //     console.warn("現在地がまだ取得できていません");
+  //     return;
+  //   }
+
+  //   if (this.geolocate && this.geolocate._watchState === 'OFF') {
+  //     // 【OFFの場合】
+  //     // GPS監視とドット生成を起動するため、素直にネイティブの trigger() に任せる。
+  //     // ただし、ズームを強制的に18にするため、一瞬だけオプションを上書きするハックを使います。
+      
+  //     const originalMaxZoom = this.geolocate.options.fitBoundsOptions.maxZoom;
+  //     this.geolocate.options.fitBoundsOptions.maxZoom = 18; // ズーム18を強制
+      
+  //     this.geolocate.trigger(); // これでドットも生成され、現在地へ移動する
+      
+  //     // （※もし通常の現在地ボタンを押した時は元のズーム制限に戻したいなら、
+  //     // 適当なタイミングで originalMaxZoom に戻す処理を入れても良いです）
+
+  //   } else {
+  //     // 【BACKGROUND または ACTIVE_LOCK の場合】
+  //     // すでに起動中（ドットは存在している）なので、自作の easeTo で美しく移動し、
+  //     // ステータスの書き換えでUIを同期させるだけでOK！
+
+  //     this.map.easeTo({
+  //       center: [this.currentLng, this.currentLat],
+  //       zoom: 18,
+  //       duration: 1000,
+  //       essential: true
+  //     });
+
+  //     if (this.geolocate && this.geolocate._watchState === 'BACKGROUND') {
+  //       this.geolocate._watchState = 'ACTIVE_LOCK';
+  //       const btn = this.geolocate._geolocateButton;
+  //       if (btn) {
+  //         btn.classList.remove('maplibregl-ctrl-geolocate-background');
+  //         btn.classList.add('maplibregl-ctrl-geolocate-active');
+  //       }
+  //     }
+  //   }
+  // }
 
   // --- ロジック関連メソッド ---
 
@@ -527,6 +362,8 @@ export default class extends BaseMapController {
     this.mapInitEnd = true;
     this.maybeClearOverlay();
 
+    this.dispatchLocationUpdate(); // location:updateイベントを発火
+
     // status が RECORDING になっている場合に保存判定
     if(this.status === STATUS.RECORDING) {
       this.checkAndBufferFootprint(this.currentGeohash);
@@ -552,6 +389,9 @@ export default class extends BaseMapController {
         } else if (result.state === 'granted'){ // 許可しているとき
 
           if (this.map && this.geolocate) {
+            this.map.jumpTo({
+              center: [this.currentLng, this.currentLat]
+            })
             this.geolocate.trigger(); // 地図上の現在地ボタンを起動
             this.mapInitEnd = true;   // 地図の設定完了フラグをtrueに
             this.maybeClearOverlay(); // 霧を晴らす
@@ -1122,80 +962,25 @@ export default class extends BaseMapController {
   fogOn(){
     this.setFogOpacity(0.9);
   }
-  // // geocoderをセット
-  // setGeocoderApi(){
-  //   const requestOptions = {
-  //     method: 'GET',
-  //   };
 
-  //   this.geocoderApi = {
-  //     // 検索ボックスに文字が入力された瞬間発火
-  //     forwardGeocode: async (config) => {
-  //       const features = [];
-  //       try {
-  //         const center = this.map.getCenter();
+  getCurrentPosition(){
+    return { lng: this.currentLng, lat: this.currentLat }
+  }
 
-  //         const url = new URL("https://api.geoapify.com/v2/places");
-  //         url.searchParams.set("categories", "public_transport");
-  //         url.searchParams.set("name", config.query);
-  //         url.searchParams.set("bias", `proximity:${this.currentLng},${this.currentLat}`);
-  //         url.searchParams.set("filter", `circle:${this.currentLng},${this.currentLat},50000`);
-  //         url.searchParams.set("limit", "10");
-  //         url.searchParams.set("lang", "ja");
-  //         url.searchParams.set("apiKey", GEOAPIFY_API_KEY);
+  getCurrentLat() {
+    return this.currentLat
+  }
 
-  //         // const request =
-  //         //   `https://api.geoapify.com/v2/places` +
-  //         //   `?categories=public_transport` +
-  //         //   `&name=${encodeURIComponent(config.query)}` +
-  //         //   `&bias=proximity:${center.lng},${center.lat}` +
-  //         //   `&filter=circle:${center.lng},${center.lat},50000` +
-  //         //   `&limit=10` +
-  //         //   `&lang=ja` +
-  //         //   `&apiKey=${GEOAPIFY_API_KEY}`;
+  getCurrentLng() {
+    return this.currentLng
+  }
 
-  //         const response = await fetch(url);
+  getMap() {
+    return this.map
+  }
 
-  //         if (!response.ok) {
-  //           throw new Error(`Geoapify request failed: ${response.status}`);
-  //         }
-
-  //         const geojson = await response.json();
-
-  //         // maplibre用にデータを整形
-  //         for (const feature of (geojson.features || [])){
-  //           const props = feature.properties || {};
-  //           const center = feature.geometry?.coordinates ||
-  //           (feature.bbox ? [
-  //             feature.bbox[0] + (feature.bbox[2] - feature.bbox[0]) / 2,
-  //             feature.bbox[1] + (feature.bbox[3] - feature.bbox[1]) / 2
-  //           ] : null);
-
-  //           if (!center) continue;
-
-  //           const label =
-  //             props.name ||
-  //             props.address_line1 ||
-  //             props.formatted ||
-  //             `${props.city || props.state || "名称不明"}`;
-
-  //           features.push({
-  //             type: 'Feature',
-  //             geometry: { type: 'Point', coordinates: center },
-  //             place_name: String(props.formatted || label),
-  //             properties: props,
-  //             text: String(label),
-  //             place_type: [props.result_type || "place"],
-  //             center: center
-  //           });
-  //         }
-  //       } catch(e) {
-  //         console.error(`Geocodingエラー: ${e}`);
-  //       }
-  //       this.setFogOpacity(0.0);
-  //       console.log(features)
-  //       return { features: features };
-  //     }
-  //   }
-  // }
+  dispatchLocationUpdate(){
+    window.dispatchEvent(new CustomEvent("location:update", {
+    }))
+  }
 }

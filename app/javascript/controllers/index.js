@@ -16,6 +16,9 @@ application.register("bottom-sheet", BottomSheetController)
 import CopyController from "./copy_controller"
 application.register("copy", CopyController)
 
+import DestinationSearchController from "./destination_search_controller"
+application.register("destination-search", DestinationSearchController)
+
 import DispatchController from "./dispatch_controller"
 application.register("dispatch", DispatchController)
 

@@ -82,3 +82,12 @@
 .overflow-x-auto::-webkit-scrollbar-thumb:active {
   background-color: rgba(55, 65, 81, 0.8) !important;
 }
+
+.maplibregl-ctrl-attrib {
+  font-size: clamp(8px, 2.5vw, 12px) !important;
+}
+
+.maplibregl-ctrl-bottom-right {
+  bottom: 0px !important;
+  z-index: 30;
+}
