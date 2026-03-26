@@ -7,7 +7,16 @@
     data-maptiler-key="<%= Rails.application.credentials.dig(:maptiler, :api_key) %>">
 
     <%# 地図を覆うオーバーレイ要素 %>
-    <div class="fixed bg-white inset-0 z-20 transition-opacity duration-1000 opacity-100" data-map-target="mapOverlay"></div>
+    <%# <div class="fixed bg-white inset-0 z-20 transition-opacity duration-1000 opacity-100" data-map-target="mapOverlay"></div> %>
+    <%# 地図を覆うオーバーレイ要素 %>
+    <%# 地図を覆うオーバーレイ要素 %>
+    <%# 地図を覆うオーバーレイ要素 %>
+    <div class="fixed inset-0 z-20 transition-opacity duration-1000 opacity-100 animate-fog-twinkle" data-map-target="mapOverlay">
+
+      <%# ここを追加：風のように通り過ぎる影（光）の層 %>
+      <div class="absolute inset-0 pointer-events-none animate-wind-sweep"></div>
+
+    </div>
 
     <%# 目的地表示部分 %>
     <div class="absolute top-0 left-0 z-10 p-3 pointer-events-none mr-11">
