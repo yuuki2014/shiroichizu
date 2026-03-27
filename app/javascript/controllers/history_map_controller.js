@@ -90,7 +90,7 @@ export default class extends BaseMapController {
       if (el.isConnected) el.remove();
     };
 
-    const fallbackTimer = setTimeout(removeOverlay, 2500);
+    const fallbackTimer = setTimeout(removeOverlay, 5000);
 
     el.addEventListener("transitionend", () => {
       clearTimeout(fallbackTimer);
