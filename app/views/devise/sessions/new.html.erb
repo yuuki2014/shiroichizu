@@ -4,18 +4,16 @@
 <% end %>
 
 <%# メインコンテナ %>
-<div class="h-full bg-[#F7F3C7] flex flex-col items-center px-6 pb-10 font-sans text-gray-800">
+<div class="h-full bg-[#FFFBE6] flex flex-col items-center px-6 pb-10 font-sans text-gray-800">
 
-  <%# 1. ロゴエリア %>
+  <%# ロゴエリア %>
   <div class="mt-10 pt-4 pb-4 w-full flex justify-center">
-    <div class="size-44 bg-white shadow-sm rounded flex items-center justify-center">
-      <span class="text-2xl font-bold tracking-[0.35em] leading-loose text-gray-900 writing-vertical">
-        ロ<br />ゴ
-      </span>
+    <div class="size-44 rounded flex items-center justify-center">
+      <%= image_tag "logo-vertical.svg" %>
     </div>
   </div>
 
-  <%# 2. フォームエリア %>
+  <%# フォームエリア %>
   <div class="w-full max-w-sm">
     <%= form_with(model: resource, url: session_path(resource_name), class: "space-y-6") do |f| %>
 
@@ -33,7 +31,7 @@
           <%= f.password_field :password, autocomplete: "current-password", placeholder: "••••••••••••••••",
               class: "w-full px-4 py-3 rounded-xl border-none shadow-sm text-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-orange-300 outline-none tracking-widest" %>
 
-          <%# 目のアイコン（見た目のみ） %>
+          <%# 目のアイコン %>
           <div class="absolute inset-y-0 right-0 pr-3 flex items-center cursor-pointer text-gray-500">
             <%= lucide_icon('eye', class: "w-6 h-6") %>
           </div>
@@ -50,7 +48,7 @@
           </div>
         <% end %>
 
-        <%# ログインボタン（小さめのオレンジボタン） %>
+        <%# ログインボタン %>
         <%= f.submit "ログイン", class: "bg-orange-400 hover:bg-orange-500 text-white font-bold py-2 px-10 rounded-full shadow-md cursor-pointer transition" %>
 
         <%# パスワードを忘れた場合 %>
@@ -62,11 +60,11 @@
     <% end %>
   </div>
 
-  <%# 3. フッターエリア（新規登録） %>
+  <%# フッターエリア %>
   <div class="mt-auto w-full max-w-sm pt-10">
     <p class="text-center text-xs text-gray-400 mb-2">アカウントをお持ちでない方は</p>
 
-    <%# 新規登録ボタン（大きなグラデーションボタン） %>
+    <%# 新規登録ボタン %>
     <%= link_to new_registration_path(resource_name), class: "block w-full" do %>
       <div class="bg-gradient-to-b from-orange-300 to-orange-500 text-white text-center font-bold text-lg py-4 rounded-2xl shadow-lg hover:opacity-90 transition">
         新規会員登録（無料）

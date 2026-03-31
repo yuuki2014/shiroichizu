@@ -7,14 +7,16 @@
     data-maptiler-key="<%= Rails.application.credentials.dig(:maptiler, :api_key) %>">
 
     <%# 地図を覆うオーバーレイ要素 %>
-    <%# <div class="fixed bg-white inset-0 z-20 transition-opacity duration-1000 opacity-100" data-map-target="mapOverlay"></div> %>
-    <%# 地図を覆うオーバーレイ要素 %>
-    <%# 地図を覆うオーバーレイ要素 %>
-    <%# 地図を覆うオーバーレイ要素 %>
     <div class="fixed inset-0 z-20 transition-opacity duration-1000 opacity-100 animate-fog-twinkle" data-map-target="mapOverlay">
 
-      <%# ここを追加：風のように通り過ぎる影（光）の層 %>
-      <div class="absolute inset-0 pointer-events-none animate-wind-sweep"></div>
+      <%# ロゴ %>
+      <div class="absolute inset-0 flex items-center justify-center pointer-events-none z-[4] -translate-y-8">
+        <%= image_tag "logo-vertical.svg", class: "w-36 sm:w-48 opacity-[0.3] select-none" %>
+      </div>
+
+      <%# 風のように通り過ぎる影の層 %>
+      <div class="absolute inset-0 pointer-events-none animate-wind-sweep">
+      </div>
 
     </div>
 

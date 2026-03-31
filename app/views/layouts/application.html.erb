@@ -18,12 +18,16 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c&family=Noto+Sans+JP:wght@100..900&display=swap" rel="stylesheet">
 
+    <%# PWA & Icons %>
     <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#8b6b4a">
 
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="alternate icon" href="/favicon.ico">
     <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
     <link rel="icon" href="/favicon-16.png" sizes="16x16" type="image/png">
-    <link rel="apple-touch-icon" href="/icon.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/icon.png">
 
     <%# OGP %>
     <meta property="og:title" content="<%= content_for(:title) || "シロイチズ" %>">
@@ -37,7 +41,7 @@
     <meta property="og:image:height" content="630">
     <meta property="og:image:alt" content="シロイチズのOGP画像">
 
-    <%# X(Twitter) Card %>
+    <%# X Card %>
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="<%= content_for(:title) || "シロイチズ" %>">
     <meta name="twitter:description" content="<%= content_for(:description) || "歩いた場所が記録され、地図が少しずつ埋まっていく。探索が楽しくなる散歩アプリ" %>">
