@@ -1,14 +1,14 @@
 <%# --- モーダル全体 --- %>
-<div class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6" data-controller="modal">
+<div class="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-6" data-controller="modal">
 
-  <%# 背景（バックドロップ） %>
+  <%# バックドロップ %>
   <div class="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity"
-       data-action="click->modal#close"></div>
+    data-action="click->modal#close"></div>
 
   <%# --- モーダル本体 --- %>
-  <div class="relative flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl animate-fade-in-up" data-modal-target="modalBox">
-    
-    <%# ヘッダー（固定） %>
+  <div class="relative flex h-[100dvh] sm:h-auto sm:max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden sm:rounded-xl bg-white shadow-2xl animate-fade-in-up" data-modal-target="modalBox">
+
+    <%# ヘッダー %>
     <div class="flex items-center justify-between border-b border-gray-100 px-6 py-4 bg-white z-10">
       <h2 class="text-xl font-bold text-gray-800">利用規約</h2>
       <button type="button" class="rounded-full p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition" data-action="click->modal#close">
@@ -16,22 +16,21 @@
       </button>
     </div>
 
-    <%# コンテンツエリア（スクロール可能） %>
+    <%# コンテンツエリア %>
     <div class="flex-1 overflow-y-auto px-6 py-6 text-sm leading-relaxed text-gray-600">
       <div class="space-y-6">
-        
+
         <%# 前文 %>
         <p>
-          この利用規約（以下「本規約」といいます。）は、White Map（以下「当サービス」といいます。）の利用条件を定めるものです。
+          この利用規約（以下「本規約」といいます。）は、シロイチズ（以下「当サービス」といいます。）の利用条件を定めるものです。
           ユーザーの皆様には、本規約に従って当サービスをご利用いただきます。
         </p>
 
         <section>
-          <h3 class="mb-2 font-bold text-gray-800">第1条（位置情報の利用）</h3>
+          <h3 class="mb-2 font-bold text-gray-800">第1条（位置情報の利用とアカウント登録）</h3>
           <p>
-            当サービスは、ユーザーの移動軌跡を地図上に可視化する「霧晴らし」機能を提供するために、端末の位置情報（GPSデータ等）を利用します。
-            ユーザーは、本サービスの利用にあたり、位置情報の取得および利用に同意するものとします。
-            なお、取得した位置情報は、地図の描画および共有機能以外の目的（ユーザーの特定や追跡など）には利用いたしません。
+            ユーザーが本規約およびプライバシーポリシーに同意した時点から、当サービスは端末の位置情報（GPSデータ等）の取得を開始し、自動的にゲストユーザーとしてアカウントが作成されます。
+            取得した位置情報は、ユーザーの移動軌跡を地図上に可視化する「霧晴らし」機能および関連機能の提供目的にのみ利用し、ユーザーの同意なく追跡等の目的には利用いたしません。
           </p>
         </section>
 
@@ -51,43 +50,55 @@
         </section>
 
         <section>
-          <h3 class="mb-2 font-bold text-gray-800">第3条（地図データの公開とプライバシー）</h3>
+          <h3 class="mb-2 font-bold text-gray-800">第3条（地図データ・投稿コンテンツの公開と責任）</h3>
           <p>
-            ユーザーが作成した地図データの公開設定は、ユーザー自身の責任において管理するものとします。
-            「公開」または「限定公開（URL共有）」設定にされた地図に含まれる情報（自宅や職場の位置など）により発生したプライバシー上の問題について、運営者は責任を負いません。
+            ユーザーは、当サービス上で作成した地図や、位置情報に紐づくテキスト・画像の投稿を任意で「公開」「限定公開」「非公開」に設定することができます。
+            公開された地図および投稿は、他のユーザーから閲覧可能になります。自宅や職場などの個人情報が含まれるデータの公開設定はユーザー自身の責任において管理するものとし、これにより発生したプライバシー上の問題やトラブルについて、運営者は一切の責任を負いません。
           </p>
         </section>
 
         <section>
-          <h3 class="mb-2 font-bold text-gray-800">第4条（ゲスト利用）</h3>
+          <h3 class="mb-2 font-bold text-gray-800">第4条（ゲスト利用とCookieの利用）</h3>
           <p>
-            アカウント登録を行わずに利用する「ゲストユーザー」の場合、ブラウザのCookieやキャッシュの削除、端末の変更等により、作成した地図データが消失する可能性があります。
-            重要なデータの保存には、アカウント登録を推奨します。
+            ユーザーが本規約に同意した時点から、当サービスは利便性向上（規約同意状態やチュートリアルの進行状況の保存など）のために、ユーザーのブラウザにCookieを保存・利用します。
+            自動作成された「ゲストユーザー」として利用する場合、データ自体は当サービスのデータベースに保存されますが、ブラウザのCookieやキャッシュの削除、シークレットモードでの利用、端末の変更等により、過去のデータへのアクセス権（アカウントとの紐付け）が失われる可能性があります。
+          </p>
+          <p class="mt-2">
+            なお、システムの保守およびデータ管理の都合上、最終アクセスから200日が経過したゲストユーザーのデータ（地図、投稿、位置情報など）は、運営者の判断により予告なく削除できるものとします。継続的なデータの保護には、正式なアカウント登録を推奨します。
           </p>
         </section>
 
         <section>
           <h3 class="mb-2 font-bold text-gray-800">第5条（禁止事項）</h3>
-          <ul class="list-disc pl-5 space-y-1">
+          <p>当サービスの利用にあたり、以下の行為を禁止します。</p>
+          <ul class="list-disc pl-5 space-y-1 mt-2">
             <li>法令または公序良俗に違反する行為</li>
             <li>意図的に不正な位置情報を送信する行為（GPSスプーフィング等）</li>
+            <li>第三者の著作権、肖像権、プライバシーその他の権利を侵害する画像や文章の投稿</li>
+            <li>わいせつ、暴力的な表現など、他人に不快感を与えるコンテンツの投稿</li>
             <li>当サービスのサーバーに過度な負荷をかける行為</li>
-            <li>他人のプライバシーを侵害する地図データの公開</li>
           </ul>
         </section>
-        
+
         <section>
-          <h3 class="mb-2 font-bold text-gray-800">第6条（免責事項）</h3>
+          <h3 class="mb-2 font-bold text-gray-800">第6条（コンテンツの削除および利用制限）</h3>
+          <p>
+            運営者は、ユーザーが第5条に定める禁止事項に該当する、または該当するおそれがあると判断した画像、テキスト、地図データ等について、ユーザーに事前の通知をすることなく、該当データの削除、非公開化、またはアカウントの利用停止措置を行うことができるものとします。なお、運営者はすべての投稿を監視する義務を負うものではありません。
+          </p>
+        </section>
+
+        <section>
+          <h3 class="mb-2 font-bold text-gray-800">第7条（免責事項）</h3>
           <p>
             当サービスは、地図データの正確性や、位置情報の完全な記録を保証するものではありません。
-            通信環境やGPSの精度により、地図が正しく描画されない場合があります。
+            通信環境やGPSの精度により、地図が正しく描画されない場合があります。また、運営者は予告なく当サービスの機能変更、停止、または終了を行うことができるものとします。
           </p>
         </section>
 
       </div>
     </div>
 
-    <%# フッター（固定） %>
+    <%# フッター %>
     <div class="border-t border-gray-100 bg-gray-50 px-6 py-4 flex justify-end">
       <button type="button"
               class="rounded-lg bg-gray-800 px-6 py-2.5 text-sm font-medium text-white shadow hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition"

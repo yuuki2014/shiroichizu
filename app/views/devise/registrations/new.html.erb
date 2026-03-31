@@ -4,13 +4,16 @@
 <% end %>
 
 <%# メインコンテナ %>
-<div class="h-full bg-[#F7F3C7] flex flex-col items-center px-6 pb-10 font-sans text-gray-800">
+<div class="h-full bg-[#FFFBE6] flex flex-col items-center px-6 pb-10 font-sans text-gray-800">
 
-  <%# 1. 文言エリア %>
+  <%# ロゴエリア %>
   <div class="mt-10 pt-4 pb-4 w-full flex justify-center">
+    <div class="size-44 rounded flex items-center justify-center">
+      <%= image_tag "logo-vertical.svg" %>
+    </div>
   </div>
 
-  <%# 2. フォームエリア %>
+  <%# フォームエリア %>
   <div class="w-full max-w-sm">
     <%= form_with(model: resource, url: registration_path(resource_name), class: "space-y-6") do |f| %>
       <%= render "devise/shared/error_messages", resource: resource %>
@@ -80,7 +83,7 @@
     <% end %>
   </div>
 
-  <%# 3. フッターエリア（ログインリンク） %>
+  <%# フッターエリア（ログインリンク） %>
   <div class="mt-auto w-full max-w-sm pt-10">
     <p class="text-center text-xs text-gray-400 mb-2">すでにアカウントをお持ちの方は
       <%= link_to "ログイン", new_user_session_path, class: "text-sm text-blue-400 hover:text-blue-600 underline" %>
