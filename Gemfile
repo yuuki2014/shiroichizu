@@ -55,6 +55,7 @@ group :test do
   # Use system testing [https://guides.rubyonrails.org/testing.html#system-testing]
   gem "capybara"
   gem "selenium-webdriver"
+  gem 'minitest', '< 6.0' # minitestがバージョン6以上に上がらないように制限をかける
 end
 
 gem "tailwindcss-rails"
