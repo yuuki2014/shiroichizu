@@ -6,8 +6,8 @@ class EmailVerificationsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
-  test "should get create" do
+  test "should create email verification" do
     post email_verification_url
-    assert_response :success
+    assert_response :redirect
   end
 end
