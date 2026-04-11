@@ -55,6 +55,7 @@ group :test do
   # Use system testing [https://guides.rubyonrails.org/testing.html#system-testing]
   gem "capybara"
   gem "selenium-webdriver"
+  gem "minitest", "< 6.0" # minitestがバージョン6以上に上がらないように制限をかける
 end
 
 gem "tailwindcss-rails"
@@ -67,3 +68,17 @@ gem "devise", "~> 4.9"
 gem "pr_geohash", "~> 1.0"
 
 gem "aws-sdk-s3", require: false
+
+gem "good_job", "~> 4.14"
+
+gem "letter_opener_web", "~> 3.0", group: :development
+
+gem "resend", "~> 1.1"
+
+gem "rails-i18n", "~> 7.0"
+
+gem "http_accept_language", "~> 2.1"
+
+gem "bullet", "~> 8.1", group: :development
+
+gem "rack-attack", "~> 6.8"

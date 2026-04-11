@@ -39,6 +39,17 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
+    env:
+      APP_HOST: "shiroichizu.app"
+      MAILER_SENDER: "noreply@shiroichizu.app"
+      RESEND_API_KEY: "dummy"
+      MAPTILER_API_KEY: "dummy"
+      GEOAPIFY_API_KEY: "dummy"
+      CLOUDFLARE_R2_BUCKET: "dummy"
+      CLOUDFLARE_ACCESS_KEY_ID: "dummy"
+      CLOUDFLARE_SECRET_ACCESS_KEY: "dummy"
+      CLARITY_ID: "dummy"
+      SENTRY_DSN: "dummy"
 
     services:
       postgres:

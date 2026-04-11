@@ -4,14 +4,14 @@
     data-map-ui-outlet="#ui"
     data-map-posts-outlet="#posts"
     class="absolute inset-0 h-full w-full"
-    data-maptiler-key="<%= Rails.application.credentials.dig(:maptiler, :api_key) %>">
+    data-maptiler-key="<%= ENV.fetch("MAPTILER_API_KEY") %>">
 
     <%# 地図を覆うオーバーレイ要素 %>
     <div class="fixed inset-0 z-20 transition-opacity duration-1000 opacity-100 animate-fog-twinkle" data-map-target="mapOverlay">
 
       <%# ロゴ %>
       <div class="absolute inset-0 flex items-center justify-center pointer-events-none z-[4] -translate-y-8">
-        <%= image_tag "logo-vertical.svg", class: "w-36 sm:w-48 opacity-[0.3] select-none" %>
+        <%= image_tag "logo-vertical.svg", class: "w-36 sm:w-48 opacity-[0.3] select-none animate-pulse" %>
       </div>
 
       <%# 風のように通り過ぎる影の層 %>
