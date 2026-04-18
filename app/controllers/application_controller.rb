@@ -49,7 +49,7 @@ class ApplicationController < ActionController::Base
   end
 
   def redirect_old_render_domain
-    old_host = "white-map.onrender.com"
+    old_host = "shiroichizu.fly.dev"
     new_host = "shiroichizu.app"
 
     if request.host == old_host

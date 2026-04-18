@@ -21,9 +21,10 @@ if (!window.hasMacScrollbarEnhancer) {
 
 const sentryDsn = document.querySelector(`meta[name="sentry-dsn"]`)?.content
 
-if (location.hostname !== "localhost") {
+if(location.hostname !== "localhost"){
   Sentry.init({
     dsn: sentryDsn,
+    environment: "production",
     sendDefaultPii: false, // 個人情報を送らない
     tracesSampleRate: 0,
     beforeSend(event) {
