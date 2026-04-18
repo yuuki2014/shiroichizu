@@ -13,6 +13,18 @@
 #   t.index ["user_id"], name: "index_posts_on_user_id"
 
 class Post < ApplicationRecord
+  include ActionView::Helpers::NumberHelper
+
+  # 定数定義
+  MAX_IMAGES_COUNT = 6
+  MAX_BODY_LENGTH = 300
+  MAX_IMAGE_SIZE = 5.megabytes
+  ALLOWED_IMAGE_TYPES = %w[
+    image/jpeg
+    image/jpg
+    image/webp
+  ].freeze
+
   # enum 定義
   # 投稿の公開ステータス
   # 公開:0, フォロワー限定:10, 非公開:20
@@ -22,6 +34,7 @@ class Post < ApplicationRecord
   validates :user_id, :latitude, :longitude, :visibility, :visited_at, presence: true
   validate :body_or_images_presence
   validate :visited_at_cannot_be_in_the_future
+  validates :body, length: { maximum: MAX_BODY_LENGTH  }
 
   # アソシエーション定義
   belongs_to :user
@@ -30,11 +43,15 @@ class Post < ApplicationRecord
   # Active Storage設定
   has_many_attached :images do |attachable|
     # マップ用アイコン
-    attachable.variant :map_icon, resize_to_fill: [ 100, 100 ], preprocessed: true
+    attachable.variant :map_icon, resize_to_fill: [ 100, 100 ], saver: { quality: 70 }, preprocessed: true
 
     # 一覧表示用、比率維持
-    attachable.variant :thumb, resize_to_limit: [ 600, 600 ], saver: { quality: 100 }, preprocessed: true
+    attachable.variant :thumb, resize_to_limit: [ 600, 600 ], saver: { quality: 85 }, preprocessed: true
   end
+
+  validate :validate_images_size
+  validate :validate_images_count
+  validate :allow_image_type
 
   # 初期値定義
   # 開始時刻はアプリ側の時間を入れる
@@ -46,8 +63,28 @@ class Post < ApplicationRecord
 
   private
 
+  def validate_images_count
+    return unless images.attached?
+
+    if images.attachments.size > MAX_IMAGES_COUNT
+      errors.add(:images, "は#{MAX_IMAGES_COUNT}枚までです")
+    end
+  end
+
+  def validate_images_size
+    return unless images.attached?
+
+    images.each do |image|
+      if image.blob.byte_size > MAX_IMAGE_SIZE
+        errors.add(:images, "は1枚あたり#{number_to_human_size(MAX_IMAGE_SIZE)}以下にしてください")
+        break
+      end
+    end
+  end
+
   def body_or_images_presence
-    if body.blank? && images.blank?
+    normalized_body = body.to_s.strip
+    if normalized_body.blank? && !images.attached?
       errors.add(:base, "本文または画像のどちらかが必須です")
     end
   end
@@ -57,6 +94,17 @@ class Post < ApplicationRecord
 
     if visited_at > Time.current
       errors.add(:visited_at, "は未来の日時に設定できません")
+    end
+  end
+
+  def allow_image_type
+    return unless images.attached?
+
+    images.each do |image|
+      unless image.content_type&.in?(ALLOWED_IMAGE_TYPES)
+        errors.add(:images, "の形式が未対応です。再度添付し直してください")
+        break
+      end
     end
   end
 end

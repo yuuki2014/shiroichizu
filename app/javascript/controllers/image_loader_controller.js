@@ -32,25 +32,24 @@ export default class extends Controller {
       return
     }
 
-    if (Sentry.getCurrentHub().getClient()) {
-      Sentry.withScope((scope) => {
-        scope.setLevel("warning")
-        scope.setTag("feature", "image_loader")
-        scope.setTag("event_type", "image_load_error")
-        scope.setTag("retried", "true")
 
-        scope.setContext("image_loader", {
-          src: originalSrc,
-          currentSrc: this.imageTarget.currentSrc || null,
-          alt: this.imageTarget.getAttribute("alt") || null,
-          complete: this.imageTarget.complete,
-          naturalWidth: this.imageTarget.naturalWidth || 0,
-          naturalHeight: this.imageTarget.naturalHeight || 0
-        })
+    Sentry.withScope((scope) => {
+      scope.setLevel("warning")
+      scope.setTag("feature", "image_loader")
+      scope.setTag("event_type", "image_load_error")
+      scope.setTag("retried", "true")
 
-        Sentry.captureMessage("画像読み込みに失敗しました")
+      scope.setContext("image_loader", {
+        src: originalSrc,
+        currentSrc: this.imageTarget.currentSrc || null,
+        alt: this.imageTarget.getAttribute("alt") || null,
+        complete: this.imageTarget.complete,
+        naturalWidth: this.imageTarget.naturalWidth || 0,
+        naturalHeight: this.imageTarget.naturalHeight || 0
       })
-    }
+
+      Sentry.captureMessage("画像読み込みに失敗しました")
+    })
 
     this.placeholderTarget.classList.remove("opacity-0")
     this.placeholderTarget.innerHTML = `

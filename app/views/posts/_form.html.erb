@@ -23,7 +23,7 @@
   </div>
 
   <%# --- メイン --- %>
-  <div class="flex-1 overflow-y-auto p-4 flex flex-col gap-6">
+  <div class="flex-1 overflow-y-auto p-4 flex flex-col gap-2">
 
     <%# 訪問日時入力エリア %>
     <div class="shrink-0 w-full border-b border-gray-200 pb-2">
@@ -39,10 +39,12 @@
     </div>
 
     <%# テキスト入力エリア %>
-    <div class="flex-1 min-h-[40vh] border border-gray-400 flex">
+    <div class="shrink-0 w-full border border-gray-300 rounded-2xl bg-white/80 overflow-hidden">
       <%= f.text_area :body,
-          placeholder: "地図に思いを残そう(省略可)",
-          class: "w-full flex-1 resize-none border-none outline-none focus:ring-0 text-lg placeholder-gray-300 leading-relaxed",
+          placeholder: "感じたことを、ひとこと(省略可)",
+          maxlength: 300,
+          rows: 5,
+          class: "w-full resize-none border-none outline-none text-base focus:ring-0 placeholder-gray-300 leading-relaxed p-4 overflow-y-auto",
           style: "box-shadow: none;"
       %>
     </div>
@@ -52,30 +54,30 @@
 
       <div class="flex items-center justify-center mb-4">
         <label class="bg-orange-100 text-orange-600 px-6 py-2 rounded-full font-bold text-sm hover:bg-orange-200 transition cursor-pointer">
-          写真を追加
+          写真を追加（6枚まで）
           <%= f.file_field :images,
             accept: "image/*",
             multiple: true,
             class: "hidden",
             data: {
               images_compress_target: "input",
-              action: "change->images-compress#compress"
+              action: "click->images-compress#countCheck change->images-compress#compress"
             } %>
         </label>
       </div>
 
       <div class="relative w-full">
 
-        <div data-images-compress-target="preview" class="flex gap-3 overflow-x-auto pb-4 snap-x w-full">
+        <div data-images-compress-target="preview" class="grid grid-cols-2 md:grid-cols-3 gap-3 w-full">
           <% if post.images.attached? %>
             <% post.images.each do |image| %>
-              <div class="shrink-0 w-40 h-40 bg-gray-100 rounded-lg flex items-center justify-center snap-center overflow-hidden relative">
+              <div class="aspect-square w-full rounded-lg flex items-center justify-center relative overflow-hidden">
                 <%= image_tag image, class: "w-full h-full object-cover" %>
                 <%= f.hidden_field :images, multiple: true, value: image.signed_id %>
               </div>
             <% end %>
           <% else %>
-            <div data-images-compress-target="defaultIcon" class="shrink-0 w-40 h-40 bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center snap-center">
+            <div data-images-compress-target="defaultIcon" class="aspect-square w-full bg-gray-100 rounded-lg border-2 border-dashed relative overflow-hidden border-gray-300 flex items-center justify-center">
               <span class="text-gray-400 text-sm">No Image</span>
             </div>
           <% end %>
