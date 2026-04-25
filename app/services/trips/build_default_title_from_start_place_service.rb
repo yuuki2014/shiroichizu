@@ -1,5 +1,5 @@
 class Trips::BuildDefaultTitleFromStartPlaceService
-  DEFAULT_TITLE = "デフォルト地図".freeze
+  DEFAULT_TITLE = "名無しの地図".freeze
 
   def self.call(trip:)
     return trip.title unless trip.title == DEFAULT_TITLE
