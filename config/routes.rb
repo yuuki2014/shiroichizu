@@ -93,10 +93,6 @@ Rails.application.routes.draw do
     end
   end
 
-  namespace :internal do
-    get "post_images/authorize", to: "post_images#authorize"
-  end
-
   # good_jobのダッシュボード
   authenticate :user, ->(user) { user.admin? } do
     mount GoodJob::Engine => "good_job"
