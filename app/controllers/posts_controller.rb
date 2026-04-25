@@ -13,20 +13,29 @@ class PostsController < ApplicationController
   end
 
   def create
-    @post = @trip.posts.new(post_params)
+    @post = @trip.posts.new(post_params.except(:images))
     @post.user = current_user
+    @images = Array(params.dig(:post, :images).compact_blank)
+    @post.incoming_images_present = @images.present?
 
-    if params[:post] && params[:post][:images].present?
-      params[:post][:images].each do |image|
-        if image.size > 5.megabytes
-          @post.errors.add(:images, "のサイズが大きすぎます。不正なデータの可能性があります。")
-          return respond_modal("shared/flash_and_error", locals: { object: @post }, flash_message: { alert: "保存に失敗しました" })
-        end
+    @images.each do |image|
+      if image.size > 5.megabytes
+        @post.errors.add(:images, "のサイズが大きすぎます。不正なデータの可能性があります。")
+        return respond_modal("shared/flash_and_error", locals: { object: @post }, flash_message: { alert: "保存に失敗しました" })
       end
     end
 
     if @post.save
-      respond_modal(flash_message: { notice: "地図に記録しました" })
+      begin
+        PostImageAttachService.call(post: @post, files: @images)
+        ProcessPostImagesJob.perform_later(@post.id)
+        respond_modal(flash_message: { notice: "地図に記録しました" })
+      rescue => e
+        Rails.logger.error("Post image attach failed: #{e.class} #{e.message}")
+        purge_cloudflare_urls(media_origin_urls(@post))
+        @post.destroy
+        respond_modal("shared/flash_and_error", locals: { object: @post }, flash_message: { alert: "画像の保存に失敗しました。もう一度お試しください" })
+      end
     else
       respond_modal("shared/flash_and_error", locals: { object: @post }, flash_message: { alert: "記録に失敗しました" })
     end
@@ -44,6 +53,7 @@ class PostsController < ApplicationController
     end
 
     if @post.user == current_user || ((@post.trip.visibility_unlisted? || @post.trip.visibility_public?) && @post.visibility_public?)
+      MediaAccessGrantService.call(posts: @post, cookies: cookies)
       respond_modal
     else
       respond_modal("shared/flash_message", flash_message: { alert: "この投稿は表示できません" })
@@ -70,14 +80,17 @@ class PostsController < ApplicationController
   end
 
   def destroy
-    @post = current_user.posts.find_by(public_uid: params[:id])
+    @post = current_user.posts.with_attached_images.find_by(public_uid: params[:id])
 
     if @post.nil?
       respond_modal("shared/flash_message", flash_message: { alert: "この記録は削除できません" })
       return
     end
 
+    urls = media_origin_urls(@post)
+
     if @post.destroy
+      PurgeCloudflareUrlsJob.perform_later(urls)
       respond_modal(flash_message: { alert: "記録を削除しました" })
     else
       respond_modal("shared/flash_and_error", locals: { object: @post }, flash_message: { alert: "記録の削除に失敗しました" })
@@ -85,6 +98,24 @@ class PostsController < ApplicationController
   end
 
   private
+
+  def media_origin_url_for_key(key)
+    "https://#{ENV.fetch('MEDIA_ORIGIN_HOST')}/#{key}"
+  end
+
+  def media_origin_urls(post)
+    return [] unless post.images.attached?
+
+    urls = []
+
+    post.images.each do |image|
+      urls << media_origin_url_for_key(image.blob.key)
+      urls << media_origin_url_for_key(image.variant(:thumb).key)
+      urls << media_origin_url_for_key(image.variant(:map_icon).key)
+    end
+
+    urls.compact.uniq
+  end
 
   def post_params
     params.require(:post).permit(:body, :latitude, :longitude, :visited_at, images: [])

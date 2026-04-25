@@ -25,6 +25,8 @@ class Post < ApplicationRecord
     image/webp
   ].freeze
 
+  attr_accessor :incoming_images_present
+
   # enum 定義
   # 投稿の公開ステータス
   # 公開:0, フォロワー限定:10, 非公開:20
@@ -43,10 +45,10 @@ class Post < ApplicationRecord
   # Active Storage設定
   has_many_attached :images do |attachable|
     # マップ用アイコン
-    attachable.variant :map_icon, resize_to_fill: [ 100, 100 ], saver: { quality: 70 }, preprocessed: true
+    attachable.variant :map_icon, resize_to_fill: [ 100, 100 ], saver: { quality: 70 }
 
     # 一覧表示用、比率維持
-    attachable.variant :thumb, resize_to_limit: [ 600, 600 ], saver: { quality: 85 }, preprocessed: true
+    attachable.variant :thumb, resize_to_limit: [ 600, 600 ], saver: { quality: 85 }
   end
 
   validate :validate_images_size
@@ -84,9 +86,10 @@ class Post < ApplicationRecord
 
   def body_or_images_presence
     normalized_body = body.to_s.strip
-    if normalized_body.blank? && !images.attached?
-      errors.add(:base, "本文または画像のどちらかが必須です")
-    end
+
+    return if normalized_body.present? || images.attached? || incoming_images_present
+
+    errors.add(:base, "本文または画像のどちらかが必須です")
   end
 
   def visited_at_cannot_be_in_the_future

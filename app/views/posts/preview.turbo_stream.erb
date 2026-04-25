@@ -84,7 +84,7 @@
                   <div class="absolute inset-0 flex items-center justify-center transition-opacity" data-image-loader-target="placeholder">
                     <div class="w-10 h-10 border-2 border-gray-200 border-t-gray-500 rounded-full animate-spin"></div>
                   </div>
-                  <%= image_tag @post.images.first.variant(:thumb),
+                  <%= image_tag media_image_url(@post.images.first.variant(:thumb).key),
                                 loading: "lazy",
                                 class: "absolute inset-0 w-full h-full object-contain rounded-xl shadow-sm opacity-0 transition-opacity duration-300",
                                 data: {
@@ -101,7 +101,7 @@
                       <div class="absolute inset-0 flex items-center justify-center transition-opacity px-1 overflow-hidden" data-image-loader-target="placeholder">
                         <div class="w-10 h-10 border-2 border-gray-200 border-t-gray-500 rounded-full animate-spin"></div>
                       </div>
-                      <%= image_tag image.variant(:thumb), loading: "lazy",
+                      <%= image_tag media_image_url(image.variant(:thumb).key), loading: "lazy",
                             class: "absolute inset-0 w-full h-full object-cover shadow-sm opacity-0 transition-opacity duration-300",
                             data: {
                               image_loader_target: "image",

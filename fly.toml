@@ -17,6 +17,9 @@ console_command = '/rails/bin/rails console'
   STYLE_URL = 'https://tiles.shiroichizu.app/json/style_2026_04_13_v2.json'
   WEB_CONCURRENCY = "1"
   RAILS_MAX_THREADS = "3"
+  MEDIA_BASE_URL = 'https://media.shiroichizu.app'
+  MEDIA_ORIGIN_HOST = 'media-origin.shiroichizu.app'
+  GOOD_JOB_QUEUES = "variants:1,default:1"
 
 [http_service]
   internal_port = 3000

@@ -23,6 +23,8 @@ cloudflare:
   bucket: <%= ENV.fetch("CLOUDFLARE_R2_BUCKET") %>
   request_checksum_calculation: "when_required"
   response_checksum_validation: "when_required"
+  upload:
+    cache_control: "public, max-age=1800, s-maxage=31536000, immutable"
 
 cloudflare_public:
   service: S3

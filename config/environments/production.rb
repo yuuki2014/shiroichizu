@@ -118,13 +118,15 @@ Rails.application.configure do
     # すべてのキューを処理
     queues: "*",
     # スレッド数の制約を設定
-    max_threads: 2,
+    max_threads: 3,
     # DBへのポーリングの間隔（秒数）を設定
-    poll_interval: 30,
+    poll_interval: 5,
     dashboard_default_locale: :ja
   }
 
   # Rack::Attack用にキャッシュストアを有効
   config.action_controller.perform_caching = true
   config.cache_store = :memory_store
+
+  config.active_storage.track_variants = false
 end
