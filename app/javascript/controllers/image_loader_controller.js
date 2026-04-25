@@ -9,7 +9,8 @@ export default class extends Controller {
   ]
 
   connect() {
-    this.retried = false; // 画像再読み込みフラグをオフでセット
+    this.originalSrc = this.imageTarget.getAttribute("src") || null // 画像へのリダイレクトリンクを取得
+    this.retryCount = 0;
   }
 
   // 画像ロード完了後
@@ -18,18 +19,23 @@ export default class extends Controller {
     this.placeholderTarget.classList.add("hidden")
   }
 
+  delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms))
+  }
+
   // 画像ロード失敗時
-  error() {
-    const originalSrc = this.imageTarget.getAttribute("src") || null // 画像へのリダイレクトリンクを取得
+  async error() {
+    if (this.originalSrc){
+      if (this.retryCount < 5) {
+        this.retryCount++;
 
-    if (!this.retried) {
-      this.retried = true
-      this.imageTarget.setAttribute("src", "")
+        const delayTime = [1000, 2000, 3000, 5000, 8000][this.retryCount - 1]
 
-      requestAnimationFrame(() => {
-        this.imageTarget.setAttribute("src", originalSrc) // URLを再セットして画像を再読み込み
-      })
-      return
+        await this.delay(delayTime);
+
+        this.imageTarget.setAttribute("src", this.originalSrc) // URLを再セットして画像を再読み込み
+        return
+      }
     }
 
 
@@ -40,7 +46,7 @@ export default class extends Controller {
       scope.setTag("retried", "true")
 
       scope.setContext("image_loader", {
-        src: originalSrc,
+        src: this.originalSrc,
         currentSrc: this.imageTarget.currentSrc || null,
         alt: this.imageTarget.getAttribute("alt") || null,
         complete: this.imageTarget.complete,

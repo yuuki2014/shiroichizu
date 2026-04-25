@@ -3,7 +3,7 @@
   <head>
     <title><%= content_for(:title) || "シロイチズ" %></title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <meta name="description" content="<%= content_for(:description) || "歩いた場所が記録され、地図が少しずつ埋まっていく。探索が楽しくなる散歩アプリ"%>">
+    <meta name="description" content="<%= content_for(:description) || "歩いた場所が記録され、地図が少しずつ開放されていく。探索が楽しくなる散歩アプリ"%>">
 
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
@@ -31,7 +31,7 @@
 
     <%# OGP %>
     <meta property="og:title" content="<%= content_for(:title) || "シロイチズ" %>">
-    <meta property="og:description" content="<%= content_for(:description) || "歩いた場所が記録され、地図が少しずつ埋まっていく。探索が楽しくなる散歩アプリ" %>">
+    <meta property="og:description" content="<%= content_for(:description) || "歩いた場所が記録され、地図が少しずつ開放されていく。探索が楽しくなる散歩アプリ" %>">
     <meta property="og:type" content="website">
     <meta property="og:url" content="<%= request.original_url %>">
     <meta property="og:site_name" content="シロイチズ">
@@ -44,7 +44,7 @@
     <%# X Card %>
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="<%= content_for(:title) || "シロイチズ" %>">
-    <meta name="twitter:description" content="<%= content_for(:description) || "歩いた場所が記録され、地図が少しずつ埋まっていく。探索が楽しくなる散歩アプリ" %>">
+    <meta name="twitter:description" content="<%= content_for(:description) || "歩いた場所が記録され、地図が少しずつ開放されていく。探索が楽しくなる散歩アプリ" %>">
     <meta name="twitter:image" content="<%= "#{request.base_url}/ogp.png" %>">
 
     <%# 外部 %>

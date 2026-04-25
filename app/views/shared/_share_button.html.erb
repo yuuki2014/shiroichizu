@@ -1,10 +1,12 @@
 <%
   text_body = "#{trip.title}"
-  url = trip_url(trip)
+  clean_url = trip_url(trip)
+  share_url = trip_url(trip, openExternalBrowser: 1)
   hashtags = "#シロイチズ"
-  share_text = "#{text_body}\n#{hashtags}\n#{url}"
+  share_text = "#{text_body}\n#{hashtags}\n#{clean_url}"
 %>
-<div class="flex flex-col gap-2" data-controller="share-button" data-share-button-title-value="<%= trip.title %>" data-share-button-text-value="<%= hashtags %>" data-share-button-url-value="<%= url %>">
+
+<div class="flex flex-col gap-2" data-controller="share-button" data-share-button-title-value="<%= trip.title %>" data-share-button-text-value="<%= hashtags %>" data-share-button-url-value="<%= share_url %>">
 
   <div class="text-sm text-gray-400 text-center">※共有すると公開設定が変更されます</div>
   <%= button_to update_status_trip_path(trip, trip: { status: 'unlisted', x: 'post' }),method: :patch, class: "w-full", data: { turbo: true, action: "click->modal#open", share_button_target: "fallbackShare", modal_url_param: "https://x.com/intent/tweet?text=#{u(share_text)}" }, form_class: "w-full" do %>

@@ -45,3 +45,4 @@
 .env
 
 r2/
+.dev.vars*

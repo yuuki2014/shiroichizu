@@ -72,7 +72,7 @@
 
                 <div class="break-inside-avoid mb-3 sm:mb-4 w-full">
                   <%= link_to image_viewer_post_path(@post, index: index), data: { turbo_stream: true } do %>
-                    <%= image_tag image, loading: "lazy", class: "w-full h-auto object-cover rounded-xl shadow-sm border border-orange-200/50 hover:brightness-50 transition duration-300 cursor-pointer" %>
+                    <%= image_tag media_image_url(image.blob.key), loading: "lazy", class: "w-full h-auto object-cover rounded-xl shadow-sm border border-orange-200/50 hover:brightness-50 transition duration-300 cursor-pointer" %>
                   <% end %>
                 </div>
 
