@@ -2,7 +2,7 @@ class PurgeCloudflareUrlsJob < ApplicationJob
   queue_as :default
 
   def perform(urls)
-    urls = Array(urls).compact.uniq
+    urls = Array(urls).compact_blank.uniq
     return if urls.blank?
 
     conn = Faraday.new(url: "https://api.cloudflare.com")

@@ -21,3 +21,16 @@
     </div>
   </div>
 <% end %>
+
+<%= turbo_stream.update "tab-bar-icon" do %>
+  <% if current_user&.avatar&.attached? %>
+    <div class="w-6 h-6 rounded-full flex items-center justify-center shadow-md">
+      <%= image_tag avatar_url(current_user), class: "w-full h-full object-cover rounded-full" %>
+    </div>
+  <% else %>
+    <div class="w-6 h-6 bg-orange-400 rounded-full flex items-center justify-center shadow-md">
+      <%= lucide_icon('user-round', class: "m-0 w-full h-full text-white") %>
+    </div>
+  <% end %>
+  <span class="text-xs">マイページ</span>
+<% end %>

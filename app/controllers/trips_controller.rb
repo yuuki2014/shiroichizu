@@ -27,8 +27,8 @@ class TripsController < ApplicationController
       @trips = current_user.trips.order(started_at: :desc)
       @geohash_counts = Footprint.where(trip_id: @trips.select(:id)).group(:trip_id).distinct.count(:geohash)
     else
-      flash[:alert] = "この機能はゲストか会員しか使えません"
-      redirect_to root_path
+      # flash[:alert] = "この機能はゲストか会員しか使えません"
+      # redirect_to root_path
     end
   end
 

@@ -53,9 +53,9 @@
     <% elsif current_user&.general? || current_user&.admin? %>
       <% user_achievements = [
         tag.span("[累計距離]", class: "") +
-        tag.span("124.5 km / 300 マス", class: "text-gray-900 font-semibold"),
+        tag.span("-- km / -- マス", class: "text-gray-900 font-semibold"),
         tag.span("[開拓エリア]", class: "") +
-        tag.span("東京都、埼玉県", class: "text-gray-900 font-semibold"),
+        tag.span("--", class: "text-gray-900 font-semibold"),
       ] %>
       <%= mypage_card(user_achievements) %>
     <% end %>

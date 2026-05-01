@@ -39,13 +39,15 @@
                   <%= post.visited_at&.strftime("%Y/%m/%d %H:%M") %>
                 </span>
                 <%# 三点リーダボタン %>
-                <div class="relative shrink-0 -mt-1 -mr-2" data-controller="dropdown" data-dropdown-post-url-value="<%= confirm_destroy_post_path(post) %>">
-                  <button type="button"
-                          class="h-8 w-8 flex items-center justify-center text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-full transition"
-                          data-action="click->dropdown#toggle">
-                    <%= lucide_icon('ellipsis', class: "w-5 h-5") %>
-                  </button>
-                </div>
+                <% if post.user_id = current_user&.id %>
+                  <div class="relative shrink-0 -mt-1 -mr-2" data-controller="dropdown" data-dropdown-post-url-value="<%= confirm_destroy_post_path(post) %>">
+                    <button type="button"
+                            class="h-8 w-8 flex items-center justify-center text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-full transition"
+                            data-action="click->dropdown#toggle">
+                      <%= lucide_icon('ellipsis', class: "w-5 h-5") %>
+                    </button>
+                  </div>
+                <% end %>
               </div>
             </div>
 

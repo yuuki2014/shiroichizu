@@ -1,4 +1,4 @@
-<%= turbo_stream.update "modal-container",
+<%#= turbo_stream.update "modal-container",
       partial: "shared/modal",
       locals: {
         title: "公開設定・シェア",
@@ -15,3 +15,53 @@
           }
         }
       } %>
+
+
+<div class="fixed inset-0 h-full pointer-events-none w-full z-40 flex justify-center items-center opacity-0 transition-all duration-300 p-0 sm:p-10" data-controller="modal">
+  <div class="modal-backdrop absolute inset-0 bg-black/50 z-0 pointer-events-auto" data-modal-target="modalBackdrop" data-action="click->modal#close"></div>
+
+  <div class="relative w-full h-[100dvh] sm:h-auto sm:max-w-sm sm:max-h-[95dvh] pointer-events-auto modal-box bg-[#fff9d6] p-4 pt-10 sm:pt-4 gap-3 flex flex-col items-center sm:rounded-[20px] z-10 transition-all duration-500 ease-out shadow-xl translate-y-40 opacity-0" data-modal-target="modalBox">
+
+    <div id="<%= "completed-map-title-#{@trip.public_uid}" %>" class="modal-header shrink-0 z-20 flex justify-between items-center w-full relative">
+      <div class="text-lg font-bold truncate">
+        <%= @trip.title %>
+      </div>
+      <div>
+        <%= button_to edit_title_trip_path(@trip),
+              method: :get,
+              params: { format: :turbo_stream },
+              form: { class: "contents" },
+              class: "flex items-center gap-3 rounded-full bg-[#FFE4C4] px-3 py-2 text-sm font-medium text-gray-600 transition hover:bg-[#ffd8a8]" do %>
+          <div class="flex items-center justify-center text-orange-400">
+            <%= lucide_icon("square-pen") %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <%# モーダル本文 %>
+    <div class="modal-body w-full flex-1 min-h-0 px-4 z-20 overflow-y-auto overscroll-contain pb-6 sm:pb-0">
+      <div class="mx-auto mb-4 aspect-square w-full max-w-[280px] bg-white shadow-sm">
+        <%#= image_tag "tutorial_step3.png", class: "h-full w-full object-cover bg-gray-100" %>
+        <%# ダミーのプレースホルダー %>
+        <div class="h-full w-full flex flex-col items-center justify-center bg-gray-50 text-gray-400">
+          <%#= image_tag "#{request.base_url}/ogp.png" %>
+          <%= lucide_icon('map', class: "w-8 h-8 mb-1 text-gray-300") %>
+          <span class="text-xs font-medium tracking-wider">MAP IMAGE</span>
+        </div>
+      </div>
+
+      <%= render "shared/visibility_button", trip: @trip %>
+
+      <%= render "shared/copy_url", trip: @trip %>
+
+      <%= render "shared/share_button", trip: @trip %>
+
+      <div class="text-center w-full mt-0">
+        <button type="button" data-action="click->modal#close click->ui#endRecording" class="rounded-full bg-[#cccaca] px-8 py-2 text-sm font-semibold text-gray-600 shadow-sm transition hover:bg-gray-400 hover:text-white">
+          地図へ戻る
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

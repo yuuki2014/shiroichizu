@@ -38,7 +38,7 @@ class UsersController < ApplicationController
       begin
         if remove_avatar
           @user.avatar.purge
-          purge_cloudflare_url(old_avatar_url)
+          PurgeCloudflareUrlsJob.perform_later(old_avatar_url)
 
         elsif uploaded_file.present?
           @user.avatar.attach(
@@ -48,7 +48,7 @@ class UsersController < ApplicationController
             key: avatar_key(@user, uploaded_file)
           )
 
-          purge_cloudflare_url(old_avatar_url)
+          PurgeCloudflareUrlsJob.perform_later(old_avatar_url)
         end
 
         respond_modal
