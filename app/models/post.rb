@@ -75,7 +75,7 @@ class Post < ApplicationRecord
   end
 
   def visible_to?(user)
-    user == self.user || visibility_public? || ( visibility_inherit_trip? && (trip.visibility_unlisted? || trip.visibility_public?) )
+    user == self.user || visibility_public? || (visibility_inherit_trip? && (trip.visibility_unlisted? || trip.visibility_public?))
   end
 
   private
