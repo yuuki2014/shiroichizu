@@ -22,8 +22,14 @@
 
     <%# モーダル本文 %>
     <div class="modal-body w-full flex-1 min-h-0 px-4 z-20 overflow-y-auto overscroll-contain pb-6 sm:pb-0">
-      <div class="mx-auto mb-4 aspect-square w-full max-w-[280px] bg-white p-2 shadow-sm">
-        <%= image_tag "tutorial_step3.png", class: "h-full w-full object-cover bg-gray-100" %>
+      <div class="mx-auto mb-4 aspect-square w-full max-w-[280px] bg-white shadow-sm">
+        <%#= image_tag "tutorial_step3.png", class: "h-full w-full object-cover bg-gray-100" %>
+        <%# ダミーのプレースホルダー %>
+        <div class="h-full w-full flex flex-col items-center justify-center bg-gray-50 text-gray-400">
+          <%#= image_tag "#{request.base_url}/ogp.png" %>
+          <%= lucide_icon('map', class: "w-8 h-8 mb-1 text-gray-300") %>
+          <span class="text-xs font-medium tracking-wider">MAP IMAGE</span>
+        </div>
       </div>
 
       <%= render "shared/visibility_button", trip: trip %>

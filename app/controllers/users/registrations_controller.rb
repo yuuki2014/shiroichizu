@@ -106,9 +106,9 @@ class Users::RegistrationsController < Devise::RegistrationsController
   end
 
   # DELETE /resource
-  # def destroy
-  #   super
-  # end
+  def destroy
+    redirect_to mypage_path, alert: "退会機能は現在準備中です"
+  end
 
   # GET /resource/cancel
   # Forces the session data which is usually expired after sign
