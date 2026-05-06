@@ -1,4 +1,17 @@
 <% target_id = "map-title-" + @trip.public_uid %>
-<%= turbo_stream.replace target_id, partial: "trips/edit_title" %>
+<%#= turbo_stream.replace target_id, partial: "trips/edit_title" %>
+
+<%= turbo_stream.replace "completed-map-title-#{@trip.public_uid}" do %>
+  <div id="<%= "completed-map-title-#{@trip.public_uid}" %>" class="modal-header shrink-0 z-20 text-center text-xl font-bold text-gray-800 w-full">
+    <%= form_with url: update_title_trip_path(@trip), class: "flex items-center gap-3 w-full", method: :patch, scope: :trip do |form| %>
+      <div class="flex-1 min-w-0">
+        <%= form.text_field :title, maxlength: Trip::TITLE_MAX_LENGTH, class: "w-full text-center py-1 min-w-0 rounded border border-gray-300 focus:ring-orange-400 focus:border-orange-400", autofocus: true %>
+      </div>
+
+      <%= form.submit "確定", class: "shrink-0 cursor-pointer rounded-full bg-orange-400 px-4 py-1.5 text-sm font-bold text-white shadow transition hover:bg-orange-500 active:scale-95" %>
+    <% end %>
+  </div>
+<% end %>
+
 <%= turbo_stream.append "flash", partial: "shared/flash_message" %>
 <%= turbo_stream.append "error-container", partial: "shared/error_messages", locals: { object: @trip } %>

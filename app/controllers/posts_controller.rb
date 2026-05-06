@@ -2,6 +2,8 @@ class PostsController < ApplicationController
   before_action :set_trip, only: %i[ new create select_position ]
 
   def index
+    return unless user_signed_in?
+
     @posts = current_user
                 .posts
                 .includes(:trip, user: { avatar_attachment: :blob })
@@ -42,7 +44,7 @@ class PostsController < ApplicationController
         respond_modal(flash_message: { notice: "地図に記録しました" })
       rescue => e
         Rails.logger.error("Post image attach failed: #{e.class} #{e.message}")
-        purge_cloudflare_urls(media_origin_urls(@post))
+        PurgeCloudflareUrlsJob.perform_later(media_origin_urls(@post))
         @post.destroy
         respond_modal("shared/flash_and_error", locals: { object: @post }, flash_message: { alert: "画像の保存に失敗しました。もう一度お試しください" })
       end

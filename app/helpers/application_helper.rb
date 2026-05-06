@@ -6,7 +6,7 @@ module ApplicationHelper
 
     # mypageからリダイレクトされて開いているユーザー詳細ページもアクティブに
     if user_signed_in?
-      if path == user_path(current_user)
+      if path == mypage_path
         if controller_name == "users" && action_name == "show"
           is_active = true
         end
@@ -22,16 +22,6 @@ module ApplicationHelper
 
   # フッター表示用
   def show_footer?
-    # allowed_paths = [
-    #   root_path,
-    #   trips_path,
-    #   mypage_path
-    # ]
-
-    # if user_signed_in?
-    #   allowed_paths << user_path(current_user)
-    # end
-
     if user_signed_in?
       if controller_name == "users"
         if action_name == "show"
@@ -117,7 +107,7 @@ module ApplicationHelper
   end
 
   def show_history_button?
-    controller_name == "trips" && action_name.in?(%w[show])
+    controller_name == "trips" && action_name.in?(%w[show]) && @trip.user_id == current_user.id
   end
 
   def mypage_card(show_elements)

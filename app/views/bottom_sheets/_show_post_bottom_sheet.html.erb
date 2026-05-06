@@ -39,7 +39,8 @@
       <% end %>
 
       <%# 写真の位置情報を使うボタン %>
-      <% if @trip && @trip.user_id == current_user&.id %>
+      <%# if @trip && @trip.user_id == current_user&.id %>
+      <% if false %>
         <%= button_to edit_status_trip_path(@trip),
               method: :get,
               params: { format: :turbo_stream },
