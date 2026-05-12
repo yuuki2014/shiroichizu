@@ -3,13 +3,10 @@ import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import ngeohash from 'ngeohash';
 import { get } from "@rails/request.js"
-import * as turf from "@turf/turf"
 import { Protocol } from "pmtiles";
 
 // 定数定義
 const INITIAL_ZOOM_LEVEL = 17;    // 初期のズームレベル
-const DEBUG_MODE = false;
-const USE_WEBGL_FOG = true;
 
 // Connects to data-controller="base-map"
 export default class extends Controller {
@@ -37,15 +34,6 @@ export default class extends Controller {
     // 累計地図をセット
     this.cumulativeGeohashes = new Set();
     this.cumulativeFeature = null;
-
-    // 世界を覆う霧のマスク
-    // this.worldFeature = turf.polygon([[
-    //   [-180, 90],
-    //   [-180, -90],
-    //   [180, -90],
-    //   [180, 90],
-    //   [-180, 90]
-    // ]]);
   }
 
   disconnect(_element){
@@ -97,6 +85,30 @@ export default class extends Controller {
       zoom: INITIAL_ZOOM_LEVEL,
       attributionControl: false,
     });
+
+    // webglコンテキストが消失した時のイベント
+    this.map.on('webglcontextrestored', () => {
+      console.warn("WebGL context restored 霧レイヤーを再構築します。");
+
+      // レイヤーを追加するためのチェック関数
+      const addLayerSafely = () => {
+        // 地図の準備が完全に終わっていなければ、再チェックを設定してリターン
+        if (!this.map.isStyleLoaded()) {
+          this.map.once("styledata", addLayerSafely);
+          return;
+        }
+
+        // もしレイヤーが残っていたら削除
+        if (this.map.getLayer("geohash-fog-custom-layer")) {
+          this.map.removeLayer("geohash-fog-custom-layer");
+        }
+
+        this.fogInit(); // 霧を再び初期化
+        this.updateCustomFogLayer(); // 現在の霧の状態を反映
+      };
+
+      addLayerSafely();
+    });
   }
 
   async loadStyleJson(signal){
@@ -140,7 +152,7 @@ export default class extends Controller {
     };
   }
 
-  // 渡されたgeohash配列から、結合済みのFeatureを作って返す
+  // 渡されたgeohash配列から、周囲の解放済み部分を計算してセット
   generateFeatureFromGeohashes(visitedGeohashes = [], targetGeohashesSet) {
     if (visitedGeohashes.length === 0) return null;
 
@@ -150,47 +162,6 @@ export default class extends Controller {
     });
 
     return;
-
-    // geohashから開放するポリゴンの配列を作成
-    const polygonsToMerge = [...targetGeohashesSet].map(hash => this.createPolygonFromGeohash(hash));
-
-    if (polygonsToMerge.length === 1) {
-      return polygonsToMerge[0];
-    }
-
-    // 分割でマージ
-    const chunkSize = 100; // 100個のずつに分ける
-    const intermediatePolygons = []; // 塊を保存する配列
-
-    // 100個ずつ四角形だけをマージして塊を複数作る
-    for (let i = 0; i < polygonsToMerge.length; i += chunkSize) {
-      const chunk = polygonsToMerge.slice(i, i + chunkSize);
-      try {
-        // chunkだけのFeatureCollectionを作ってマージ
-        const mergedChunk = turf.union(turf.featureCollection(chunk));
-        if (mergedChunk) {
-          intermediatePolygons.push(mergedChunk);
-        }
-      } catch (e) {
-        console.warn("Union chunk failed, skipping this chunk...", e);
-      }
-    }
-
-    // 塊たちを一気にマージする
-    try {
-      if (intermediatePolygons.length === 1) {
-        return intermediatePolygons[0];
-      }
-      return turf.union(turf.featureCollection(intermediatePolygons));
-    } catch (e) {
-      console.error("Final union failed, falling back to sequential merge...", e);
-      // マージでエラーになったら雪だるま式でリカバリー
-      let fallbackResult = intermediatePolygons[0];
-      for (let i = 1; i < intermediatePolygons.length; i++) {
-        fallbackResult = turf.union(turf.featureCollection([fallbackResult, intermediatePolygons[i]]));
-      }
-      return fallbackResult;
-    }
   }
 
   addGeohashesAndGetNew(currentGeohash, visitedGeohashes) {
@@ -219,14 +190,6 @@ export default class extends Controller {
     }
 
     return newGeohashes
-  }
-
-  // geohashのポリゴンを作成
-  createPolygonFromGeohash(hash){
-    const [minLat, minLon, maxLat, maxLon] = ngeohash.decode_bbox(hash); // geohashをデコードしてbboxの形式に4点を取得
-    const bbox = [minLon, minLat, maxLon, maxLat]; // turfのbbox用に並び替える
-
-    return turf.bboxPolygon(bbox);
   }
 
   // 投稿モードアクティブ
@@ -277,7 +240,6 @@ export default class extends Controller {
   // postsValueのデータを全てマップに追加
   addMarkers(){
     // データがない場合は何もしない
-    console.log(this.postsValue);
     if(!this.hasPostsValue) return;
     if (!this.postsValue?.length) return
 
@@ -342,48 +304,25 @@ export default class extends Controller {
     get(`/posts/${uid}/preview`, { responseKind: "turbo-stream" });
   }
 
+  getFogConfig() {
+    return {
+      opacity: 0.9,
+      color: [1.0, 1.0, 1.0]
+    };
+  }
+
   // 霧の初期化
   fogInit(){
-    if (USE_WEBGL_FOG){
-      // 文字レイヤー（Symbol）のIDを探す
-      // const layers = this.map.getStyle().layers;
-      // let firstSymbolId = null;
-      // for (const layer of layers) {
-      //   if (layer.type === 'symbol') {
-      //     firstSymbolId = layer.id;
-      //     break;
-      //   }
-      // }
+    const config = this.getFogConfig();
 
-      this.fogCustomLayer = new GeohashFogCustomLayer({
-        id: "geohash-fog-custom-layer",
-        opacity: 0.9,
-      });
+    this.fogCustomLayer = new GeohashFogCustomLayer({
+      id: "geohash-fog-custom-layer",
+      opacity: config.opacity,
+      color: config.color
+    });
 
-      if (!this.map.getLayer('geohash-fog-custom-layer')) {
-        this.map.addLayer(this.fogCustomLayer);
-        // this.map.addLayer(this.fogCustomLayer, firstSymbolId);
-      }
-    } else {
-      if (!this.map.getSource('fog')) {
-        this.map.addSource('fog', {
-          type: 'geojson',
-          data: this.worldFeature
-        });
-      }
-
-      if (!this.map.getLayer('fog-layer')) {
-        this.map.addLayer({
-          id: 'fog-layer',
-          type: "fill",
-          source: 'fog',
-          paint: {
-            "fill-color": "#ffffff",
-            "fill-opacity": 0.9,
-            'fill-antialias': false,
-          }
-        });
-      }
+    if (!this.map.getLayer('geohash-fog-custom-layer')) {
+      this.map.addLayer(this.fogCustomLayer);
     }
   }
 
@@ -407,9 +346,6 @@ export default class extends Controller {
   }
 
   setFogOpacity(opacity){
-    // if(this.map){
-    //   this.map.setPaintProperty('fog-layer', 'fill-opacity', opacity);
-    // }
     if (this.fogCustomLayer) {
       this.fogCustomLayer.opacity = opacity;
       this.map.triggerRepaint(); // 再描画
@@ -429,10 +365,7 @@ export default class extends Controller {
       .then((data) => {
         if (this.ac.signal.aborted || !this.element.isConnected) return;
 
-        // this.cumulativeFeature = this.generateFeatureFromGeohashes(data.geohashes, cumulativeGeohashes);
         this.generateFeatureFromGeohashes(data.geohashes, cumulativeGeohashes);
-
-        // console.log(this.cumulativeFeature)
 
         this.cumulativeModeStatus = "isReady"
       })
@@ -461,11 +394,10 @@ export default class extends Controller {
       this.visitedGeohashes.forEach(hash => merged.add(hash))
     }
 
-    // return this.filterVisibleGeohashes(merged)
     return Array.from(merged)
   }
 
-  // 現在の描画範囲内のgeohashを返す
+  // 現在の描画範囲内のgeohashを返す（現在未使用）
   filterVisibleGeohashes(geohashes) {
     const bounds = this.map.getBounds() // 現在の表示範囲を取得
 
@@ -499,7 +431,7 @@ export default class extends Controller {
   }
 }
 
-
+// WebGLを使ったカスタムレイヤー用のクラス
 class GeohashFogCustomLayer {
   constructor({ id = "geohash-fog-custom-layer", opacity = 0.65, color = [1.0, 1.0, 1.0] } = {}) {
     this.id = id;
@@ -543,10 +475,7 @@ class GeohashFogCustomLayer {
     this.vertexData = this.buildVertexData(this.hashes);
 
     // GPUバッファの更新
-    if (this.gl && this.cellBuffer) {
-      this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.cellBuffer);
-      this.gl.bufferData(this.gl.ARRAY_BUFFER, this.vertexData, this.gl.DYNAMIC_DRAW);
-    }
+    this.uploadCellBuffer();
   }
 
   // Geohashの配列を三角形ポリゴンの頂点配列に変換。座標は this.anchor からの相対値として計算
@@ -643,6 +572,13 @@ class GeohashFogCustomLayer {
     );
   }
 
+  uploadCellBuffer() {
+    if (!this.gl || !this.cellBuffer) return;
+
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.cellBuffer);
+    this.gl.bufferData(this.gl.ARRAY_BUFFER, this.vertexData, this.gl.DYNAMIC_DRAW);
+  }
+
   // 毎フレームの描画処理
   render(gl, args) {
     if (!this.cellProgram || !this.fogProgram || !this.visible) return;
@@ -652,7 +588,6 @@ class GeohashFogCustomLayer {
 
     // 行列に対して、アンカー分の移動を適用。相対座標で計算された頂点が正しい位置にレンダリングされる
     this.translateMatrix(matrix, this.anchor.x, this.anchor.y);
-
 
     // ステンシルマスクを「書き込み許可」にする.gl.clear(gl.STENCIL_BUFFER_BIT) が効かない場合があるから
     gl.stencilMask(0xff);
@@ -745,5 +680,22 @@ class GeohashFogCustomLayer {
       throw new Error(error);
     }
     return program;
+  }
+
+  // 削除時の動作
+  onRemove(map, gl) {
+    if (!gl.isContextLost?.()) {
+      if (this.cellBuffer) gl.deleteBuffer(this.cellBuffer);
+      if (this.fullscreenBuffer) gl.deleteBuffer(this.fullscreenBuffer);
+      if (this.cellProgram) gl.deleteProgram(this.cellProgram);
+      if (this.fogProgram) gl.deleteProgram(this.fogProgram);
+    }
+
+    this.cellBuffer = null;
+    this.fullscreenBuffer = null;
+    this.cellProgram = null;
+    this.fogProgram = null;
+    this.gl = null;
+    this.map = null;
   }
 }
