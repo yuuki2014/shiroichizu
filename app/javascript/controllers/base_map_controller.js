@@ -26,6 +26,7 @@ export default class extends Controller {
     this.mapInitEnd = false; // 初期化終了フラグ
     this.clearMapOverlayEnd = false; // 初期のマップオーバーレイクリアフラグ
     this.isPostModeActive = false; // 投稿モードの状態管理変数を定義
+    this.mapLoadedOnce = false; // 地図読み込み完了フラグ
     this.markers = {}; // マーカーを保存するオブジェクト
 
     // 前のが残っていた時に備えて最初に消してからアボートコントローラーをセット
@@ -88,6 +89,10 @@ export default class extends Controller {
       attributionControl: false,
     });
 
+    // 地図のスタイル、初期ソースのロード完了
+    this.map.once("load", () => {
+      this.mapLoadedOnce = true;
+    });
     this.map.on("webglcontextrestored", this.handleWebGLContextRestored); // webglコンテキスト消失時にカスタムレイヤーを再設定
     this.map.on("error", this.handleMapError); // 地図読み込み失敗時に、リロードモーダルを表示
   }
@@ -135,9 +140,23 @@ export default class extends Controller {
 
     console.warn("[map:error]", error);
 
-    const isPmtilesByteServingError = message.includes("Server returned no content-length header") || message.includes("HTTP Byte Serving");
+    const isPmtilesByteServingError =
+      message.includes("Server returned no content-length header") ||
+      message.includes("content-length") ||
+      message.includes("HTTP Byte Serving");
 
     if (!isPmtilesByteServingError) return;
+
+    // 地図がロード済みなら、一部タイル取得失敗として扱いモーダルは出さない
+    if (this.mapLoadedOnce) {
+      console.warn("[map:pmtiles-range-error-after-load]", {
+        message,
+        mapLoaded: this.map?.loaded?.(),
+        styleLoaded: this.map?.isStyleLoaded?.()
+      })
+
+      return
+    }
 
     this.showMapLoadErrorModal(); // pmtilesをうまく読み込めなかったときだけエラーを表示
 
@@ -502,12 +521,23 @@ export default class extends Controller {
     modal.dataset.controller = "modal";
 
     modal.innerHTML = `
-      <div class="modal-backdrop absolute inset-0 bg-black/50 z-0 pointer-events-auto"></div>
+      <div
+        class="modal-backdrop absolute inset-0 bg-black/50 z-0 pointer-events-auto"
+        data-action="click->modal#close"
+      ></div>
 
       <div
         class="relative max-w-sm pointer-events-auto modal-box max-h-[90vh] w-full bg-[#fff9d6] p-4 gap-3 flex flex-col items-center rounded-[20px] z-10 transition-all duration-500 ease-out shadow-xl translate-y-40 opacity-0"
         data-modal-target="modalBox"
       >
+        <button
+          type="button"
+          class="absolute right-2 top-2 h-6 w-6 flex items-center justify-center leading-none bg-gray-500/50 rounded-full z-30"
+          data-action="click->modal#close"
+          aria-label="閉じる"
+        >
+          ×
+        </button>
         <div class="modal-header shrink-0 z-20">
           <div class="text-lg font-bold">
             地図の読み込みに失敗しました
