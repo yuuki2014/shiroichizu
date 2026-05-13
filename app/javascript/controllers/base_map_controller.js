@@ -4,6 +4,8 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 import ngeohash from 'ngeohash';
 import { get } from "@rails/request.js"
 import { Protocol } from "pmtiles";
+import * as Sentry from "@sentry/browser";
+import { STATUS } from "../constants/status";
 
 // 定数定義
 const INITIAL_ZOOM_LEVEL = 17;    // 初期のズームレベル
@@ -86,35 +88,81 @@ export default class extends Controller {
       attributionControl: false,
     });
 
-    // webglコンテキストが消失した時のイベント
-    this.map.on('webglcontextrestored', () => {
-      console.warn("WebGL context restored 霧レイヤーを再構築します。");
-
-      // レイヤーを追加するためのチェック関数
-      const addLayerSafely = () => {
-        // 地図の準備が完全に終わっていなければ、再チェックを設定してリターン
-        if (!this.map.isStyleLoaded()) {
-          this.map.once("styledata", addLayerSafely);
-          return;
-        }
-
-        // もしレイヤーが残っていたら削除
-        if (this.map.getLayer("geohash-fog-custom-layer")) {
-          this.map.removeLayer("geohash-fog-custom-layer");
-        }
-
-        this.fogInit(); // 霧を再び初期化
-        this.updateCustomFogLayer(); // 現在の霧の状態を反映
-      };
-
-      addLayerSafely();
-    });
+    this.map.on("webglcontextrestored", this.handleWebGLContextRestored); // webglコンテキスト消失時にカスタムレイヤーを再設定
+    this.map.on("error", this.handleMapError); // 地図読み込み失敗時に、リロードモーダルを表示
   }
 
+  // webglコンテキスト消失時に実行するメソッド
+  handleWebGLContextRestored = () => {
+    console.warn("WebGL restored! PMTilesの描画完了を待ってから霧を再構築します...");
+
+    this.restoreFogLayerSafely();
+  }
+
+  // webglのカスタムレイヤーを再構築
+  restoreFogLayerSafely = () => {
+    if (!this.map || !this.element.isConnected) return;
+
+    // カスタムレイヤーを追加するためのチェック関数
+    const addLayerSafely = () => {
+      if (!this.map || !this.element.isConnected) return;
+
+      // 地図の準備が完全に終わっていなければ、完了後に再度実行
+      // map.isStyleLoaded(),map.once('styledata', ...)では霧が表示されないので注意
+      if (!this.map.loaded()) {
+        this.map.once("idle", addLayerSafely);
+        return;
+      }
+
+      const layerId = "geohash-fog-custom-layer";
+
+      // もしレイヤーが残っていたら削除
+      if (this.map.getLayer(layerId)) {
+        this.map.removeLayer(layerId);
+      }
+
+      this.fogInit(); // 霧を再び初期化
+      this.updateCustomFogLayer(); // 現在の霧の状態を反映
+    };
+
+    addLayerSafely();
+  }
+
+  // maplibreのエラー時に実行するメソッド
+  handleMapError = (event) => {
+    const error = event.error;
+    const message = error?.message || "";
+
+    console.warn("[map:error]", error);
+
+    const isPmtilesByteServingError = message.includes("Server returned no content-length header") || message.includes("HTTP Byte Serving");
+
+    if (!isPmtilesByteServingError) return;
+
+    this.showMapLoadErrorModal(); // pmtilesをうまく読み込めなかったときだけエラーを表示
+
+    // sentryにエラーを送る
+    if (Sentry) {
+      Sentry.captureException(error || new Error(message), {
+        tags: {
+          area: "map",
+          source: "maplibre",
+          kind: "pmtiles-byte-serving",
+        },
+        extra: {
+          message,
+          url: location.href,
+          userAgent: navigator.userAgent,
+        },
+      });
+    }
+  }
+
+  // stylejsonを読み込む
   async loadStyleJson(signal){
     if(this.constructor.styleJsonCache) {
       console.log("前回のを使用")
-      return structuredClone(this.constructor.styleJsonCache);
+      return structuredClone(this.constructor.styleJsonCache); // 前回読み込んだキャッシュが残っていたらそれを返す
     }
 
     const styleUrl = this.element.dataset.styleUrl;
@@ -168,19 +216,7 @@ export default class extends Controller {
     if(!currentGeohash) return [];
 
     const newGeohashes = [];
-    const candidates = new Set();
-
-    candidates.add(currentGeohash);
-
-    // 現在地の周囲8つのgeohashを取得
-    const neighbors = ngeohash.neighbors(currentGeohash);
-    neighbors.forEach(hash => candidates.add(hash));
-
-    // 周囲8つのさらに周りのgeohashを取得
-    for (const hash of neighbors) {
-      const aroundNeighbors = ngeohash.neighbors(hash);
-      aroundNeighbors.forEach(hash => candidates.add(hash));
-    }
+    const candidates = this.getClearingAreaGeohashes(currentGeohash); // 追加するgeohashの候補を取得
 
     // 保持していないものを追加
     for (const hash of candidates) {
@@ -189,7 +225,26 @@ export default class extends Controller {
       newGeohashes.push(hash);
     }
 
-    return newGeohashes
+    return newGeohashes;
+  }
+
+  getClearingAreaGeohashes(geohash){
+    const candidates = new Set();
+
+    // 現在地自身を追加
+    candidates.add(geohash);
+
+    // 現在地の周囲8つのgeohashを取得
+    const neighbors = ngeohash.neighbors(geohash);
+    neighbors.forEach(hash => candidates.add(hash));
+
+    // 周囲8つのさらに周りのgeohashを取得
+    for (const hash of neighbors) {
+      const aroundNeighbors = ngeohash.neighbors(hash);
+      aroundNeighbors.forEach(hash => candidates.add(hash));
+    }
+
+    return candidates;
   }
 
   // 投稿モードアクティブ
@@ -339,10 +394,17 @@ export default class extends Controller {
   updateCustomFogLayer() {
     if (!this.fogCustomLayer) return
 
-    const visibleHashes = this.getVisibleClearedGeohashes()
+    let visibleHashes = this.getVisibleClearedGeohashes(); // 解放済みのgeohashを取得
 
-    this.fogCustomLayer.setHashes(visibleHashes)
-    this.map.triggerRepaint()
+    // 停止モードの時はvisibleHashesを現在地周辺のみにする
+    // webglコンテキストロスト時に、visitedGeohashが存在しないため、currentGeohashから再計算
+    if (this.currentGeohash && this.status === STATUS.STOPPED) {
+      const currentGeohashes = Array.from(this.getClearingAreaGeohashes(this.currentGeohash));
+      visibleHashes = currentGeohashes;
+    }
+
+    this.fogCustomLayer.setHashes(visibleHashes); // カスタムレイヤーにgeohashをセット
+    this.map.triggerRepaint(); // 地図を再描画
   }
 
   setFogOpacity(opacity){
@@ -428,6 +490,53 @@ export default class extends Controller {
       this.fogCustomLayer.color = [r / 255, g / 255, b / 255];
       this.map.triggerRepaint();
     }
+  }
+
+  // マップ読み込みエラー時のモーダル表示
+  showMapLoadErrorModal() {
+    const container = document.getElementById("modal-container");
+    if (!container) return;
+
+    const modal = document.createElement("div");
+    modal.className = "fixed inset-0 h-full pointer-events-none w-full z-40 flex justify-center items-center opacity-0 transition-all duration-300 p-10";
+    modal.dataset.controller = "modal";
+
+    modal.innerHTML = `
+      <div class="modal-backdrop absolute inset-0 bg-black/50 z-0 pointer-events-auto"></div>
+
+      <div
+        class="relative max-w-sm pointer-events-auto modal-box max-h-[90vh] w-full bg-[#fff9d6] p-4 gap-3 flex flex-col items-center rounded-[20px] z-10 transition-all duration-500 ease-out shadow-xl translate-y-40 opacity-0"
+        data-modal-target="modalBox"
+      >
+        <div class="modal-header shrink-0 z-20">
+          <div class="text-lg font-bold">
+            地図の読み込みに失敗しました
+          </div>
+        </div>
+
+        <div class="modal-body w-full flex-1 min-h-0 px-4 z-20 overflow-y-auto overscroll-contain text-sm leading-relaxed">
+          <p>
+            地図データの読み込みに失敗しました。通信状況を確認して、ページを再読み込みしてください。
+          </p>
+
+          <div class="mt-4 flex justify-center">
+            <button
+              type="button"
+              class="map-error-reload-button rounded-full bg-orange-400 px-4 py-2 text-white font-bold shadow"
+            >
+              再読み込み
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    container.appendChild(modal);
+
+    const reloadButton = modal.querySelector(".map-error-reload-button");
+    reloadButton?.addEventListener("click", () => {
+      window.location.reload();
+    });
   }
 }
 

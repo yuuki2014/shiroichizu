@@ -19,7 +19,7 @@ const PERMISSION_DENIED     = 1;     // 位置情報不許可時のerror値
 const INITIAL_ZOOM_LEVEL = 17;
 const MAX_POSITION_AGE_MS = 15000; // 位置情報を反映させるのに許容する時間の差
 const MAX_EXPLORATION_ACCURACY = 300; // 霧解放時に許容する現在地の正確さ
-const RESUME_IGNORE_MS = 3000; // ブラウザ復帰時に位置を反映させない時間
+const RESUME_IGNORE_MS = 5000; // ブラウザ復帰時に位置を反映させない時間
 
 // Connects to data-controller="map"
 export default class extends BaseMapController {
@@ -598,6 +598,11 @@ export default class extends BaseMapController {
       this.geolocate = null;
     }
 
+    if (this.map) {
+      this.map.off("error", this.handleMapError);
+      this.map.off("webglcontextrestored", this.handleWebGLContextRestored);
+    }
+
     if (this.resumeIgnoreTimer) {
       clearTimeout(this.resumeIgnoreTimer);
       this.resumeIgnoreTimer = null;
@@ -628,6 +633,12 @@ export default class extends BaseMapController {
     }
     this.mapInitEnd = false;
     this.ac?.abort()
+
+    if (this.map) {
+      this.map.remove(); // 地図機能の停止、削除
+      this.map = null; // 参照も切る
+      console.log("map 消去:", this.map)
+    }
   }
 
   // 要素削除時に起動
