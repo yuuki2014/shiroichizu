@@ -1,10 +1,7 @@
 import BaseMapController from "./base_map_controller.js"
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
-import * as turf from "@turf/turf"
 import ngeohash from 'ngeohash'
-
-const USE_WEBGL_FOG = true;
 
 // Connects to data-controller="history-map"
 export default class extends BaseMapController {
@@ -13,11 +10,9 @@ export default class extends BaseMapController {
                   }
 
   async connect(_element) {
-    // base mapのconnectを実行
-    super.connect();
+    super.connect(); // base mapのconnectを実行
 
     await this.initVisitedGeohashes();
-    // this.cumulativeFeature = this.generateFeatureFromGeohashes(this.visitedGeohashesValue, this.cumulativeGeohashes);
 
     // 中央位置設定
     if(this.longitudeValue && this.latitudeValue){
@@ -38,38 +33,15 @@ export default class extends BaseMapController {
 
     // 非表示にする地図上の情報
     const toHide = [
-      // "Restaurant and shop",
-      // "Store and mall",
-      // "Pub",
-      // "Hotel",
-      // "Generic POI",
-      // "Generic POI 11",
-      // "Major POI",
-      // "Doctor",
-      // "Parking",
-      // "Government",
-      // "Golf pitch",
     ];
 
     // 地図の読み込みが終わった後に実行
     this.map.on('load', () => {
       // 霧を初期化
       this.fogInit();
-      this.setFogOpacity(0.6);
-      this.setFogColor(26, 38, 52)
-      this.setupCustomFogLayerEvents()
+      this.setupCustomFogLayerEvents();
 
-      // toHide.forEach(id => {
-      //   if (this.map.getLayer(id)) {
-      //     this.map.setLayoutProperty(id, "visibility", "none");
-      //   }
-      // });
-
-      // this.executeFogClearing();
       this.updateCustomFogLayer();
-
-      // this.initRevealedAreaLayer();
-      // this.updateRevealedArea();
 
       this.addMarkers();
 
@@ -88,20 +60,11 @@ export default class extends BaseMapController {
     }
   }
 
-  executeFogClearing(){
-    if(!this.cumulativeFeature){
-      console.log("geohashがないので何も実行しません")
-      return;
-    }
-
-    // 世界全体からvisitedを引いて霧を作る
-    const fogPolygon = turf.difference(turf.featureCollection([ this.worldFeature, this.cumulativeFeature ]));
-
-    if (fogPolygon) {
-      this.updateFog(fogPolygon);
-    } else {
-      console.log("fogPolygonが見つかりません");
-    }
+  getFogConfig() {
+    return {
+      opacity: 0.6,
+      color: [26/255, 38/255, 52/255]
+    };
   }
 
   clearMapOverlay(){
@@ -141,96 +104,6 @@ export default class extends BaseMapController {
     this.maybeClearOverlay();
   }
 
-  // 霧の初期化
-  // fogInit(){
-  //   if (USE_WEBGL_FOG){
-  //     this.fogCustomLayer = new GeohashFogCustomLayer({
-  //       id: "geohash-fog-custom-layer",
-  //       opacity: 0.65,
-  //     })
-
-  //     if (!this.map.getLayer('geohash-fog-custom-layer')) {
-  //       this.map.addLayer(this.fogCustomLayer)
-  //     }
-
-  //   } else {
-  //     if (!this.map.getSource('fog')) {
-  //       this.map.addSource('fog', {
-  //         type: 'geojson',
-  //         data: this.worldFeature
-  //       });
-  //     }
-
-  //     if (!this.map.getLayer('fog-layer')) {
-  //       this.map.addLayer({
-  //         id: 'fog-layer',
-  //         type: "fill",
-  //         source: 'fog',
-  //         paint: {
-  //           "fill-color": "#f2eee8",
-  //           "fill-opacity": 0.55,
-  //           'fill-antialias': false,
-  //         }
-  //       });
-  //     }
-  //   }
-  // }
-
-  initRevealedAreaLayer() {
-    if (!this.map.getSource('revealed-area')) {
-      this.map.addSource('revealed-area', {
-        type: 'geojson',
-        data: this.cumulativeFeature || turf.featureCollection([])
-      });
-    }
-
-    // ふわっとした外側の光
-    if (!this.map.getLayer('revealed-outline-glow')) {
-      this.map.addLayer({
-        id: 'revealed-outline-glow',
-        type: 'line',
-        source: 'revealed-area',
-        paint: {
-          'line-color': '#8b6b4a',
-          'line-opacity': 0.1,
-          'line-width': [
-            'interpolate', ['linear'], ['zoom'],
-            10, 2,
-            14, 4,
-            17, 6
-          ],
-          'line-blur': 3
-        }
-      });
-    }
-
-    // くっきりした境界線
-    if (!this.map.getLayer('revealed-outline')) {
-      this.map.addLayer({
-        id: 'revealed-outline',
-        type: 'line',
-        source: 'revealed-area',
-        paint: {
-          'line-color': '#ad8d6c',
-          'line-opacity': 0.5,
-          'line-width': [
-            'interpolate', ['linear'], ['zoom'],
-            10, 1,
-            14, 1,
-            17, 2
-          ]
-        }
-      });
-    }
-  }
-
-  updateRevealedArea() {
-    const source = this.map.getSource('revealed-area');
-    if (!source) return;
-
-    source.setData(this.cumulativeFeature || turf.featureCollection([]));
-  }
-
   setupCustomFogLayerEvents() {
     // moveendとzoomendの両方で実行
     const updateEvents = ["moveend", "zoomend"];
@@ -245,6 +118,7 @@ export default class extends BaseMapController {
     });
   }
 
+  // 地図の全体が映るようにカメラを設定
   fitToVisitedArea() {
     if (!this.visitedGeohashes || this.visitedGeohashes.size === 0) return;
 

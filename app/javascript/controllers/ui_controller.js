@@ -108,7 +108,8 @@ export default class extends Controller {
     this.mapOutlet.setTripId(this.tripIdValue, this.oldTripGeohashes);
     this.statusValue = STATUS.RECORDING
     this.mapOutlet.setStatus(this.statusValue);
-    this.mapOutlet.postFootprint();
+    // this.mapOutlet.postFootprint();
+    this.mapOutlet.recordStartFootprint();
     this.mapOutlet.setFlushTimer();
     this.mapOutlet.addMarkers();
     // this.mapOutlet.executeFogClearing(true);
@@ -128,7 +129,7 @@ export default class extends Controller {
   pauseRecording(){
     console.log("一時停止");
     this.mapOutlet.flushBuffer();
-    this.mapOutlet.postFootprint();
+    // this.mapOutlet.postFootprint();
     this.statusValue = STATUS.PAUSED
     this.mapOutlet.setStatus(this.statusValue);
   }
