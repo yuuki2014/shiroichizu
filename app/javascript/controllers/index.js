@@ -58,6 +58,9 @@ application.register("map", MapController)
 import ModalController from "./modal_controller"
 application.register("modal", ModalController)
 
+import PasswordController from "./password_controller"
+application.register("password", PasswordController)
+
 import PostsController from "./posts_controller"
 application.register("posts", PostsController)
 
