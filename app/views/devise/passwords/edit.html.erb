@@ -27,7 +27,7 @@
       <%= f.hidden_field :reset_password_token %>
 
       <%# パスワード %>
-      <div class="field">
+      <div class="field" data-controller="password">
         <div class="flex items-center mb-2 gap-3">
           <%= f.label :password, "新しいパスワード", class: "text-sm font-bold" %>
 
@@ -39,28 +39,53 @@
         </div>
 
         <div class="relative">
-          <%= f.password_field :password, autocomplete: "new-password", placeholder: "••••••••••••••••", autofocus: true,
-              class: "w-full px-4 py-3 rounded-xl border-none shadow-sm text-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-orange-300 outline-none tracking-widest" %>
+          <%= f.password_field :password,
+              required: true,
+              autocomplete: "new-password",
+              minlength: @minimum_password_length,
+              maxlength: 128,
+              placeholder: "••••••••••••••••",
+              autofocus: true,
+              class: "w-full px-4 py-3 pr-12 rounded-xl border-none shadow-sm text-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-orange-300 outline-none tracking-widest",
+              data: { password_target: "input" } %>
 
-          <%# 目のアイコン（見た目のみ） %>
-          <div class="absolute inset-y-0 right-0 pr-3 flex items-center cursor-pointer text-gray-500">
-            <%= lucide_icon('eye', class: "w-6 h-6") %>
-          </div>
+          <%# 目のアイコン %>
+          <button
+            type="button"
+            class="absolute inset-y-0 right-0 pr-3 flex items-center cursor-pointer text-gray-500"
+            data-password-target="button"
+            data-action="click->password#toggle"
+          >
+            <%= lucide_icon("eye", class: "w-6 h-6", data: { password_target: "eyeIcon" }) %>
+            <%= lucide_icon("eye-off", class: "w-6 h-6 hidden", data: { password_target: "eyeOffIcon" }) %>
+          </button>
         </div>
       </div>
 
       <%# パスワード確認 %>
-      <div class="field">
+      <div class="field" data-controller="password">
         <%= f.label :password_confirmation, "新しいパスワード(確認用)", class: "block text-sm font-bold mb-2" %>
 
         <div class="relative">
-          <%= f.password_field :password_confirmation, autocomplete: "new-password", placeholder: "••••••••••••••••",
-              class: "w-full px-4 py-3 rounded-xl border-none shadow-sm text-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-orange-300 outline-none tracking-widest" %>
+          <%= f.password_field :password_confirmation,
+              required: true,
+              autocomplete: "new-password",
+              minlength: @minimum_password_length,
+              maxlength: 128,
+              placeholder: "••••••••••••••••",
+              class: "w-full px-4 py-3 pr-12 rounded-xl border-none shadow-sm text-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-orange-300 outline-none tracking-widest",
+              data: { password_target: "input" } %>
 
-          <%# 目のアイコン（見た目のみ） %>
-          <div class="absolute inset-y-0 right-0 pr-3 flex items-center cursor-pointer text-gray-500">
-            <%= lucide_icon('eye', class: "w-6 h-6") %>
-          </div>
+          <%# 目のアイコン %>
+          <button
+            type="button"
+            class="absolute inset-y-0 right-0 pr-3 flex items-center cursor-pointer text-gray-500"
+            data-password-target="button"
+            data-action="click->password#toggle"
+          >
+            <%= lucide_icon("eye", class: "w-6 h-6", data: { password_target: "eyeIcon" }) %>
+            <%= lucide_icon("eye-off", class: "w-6 h-6 hidden", data: { password_target: "eyeOffIcon" }) %>
+          </button>
         </div>
       </div>
 
