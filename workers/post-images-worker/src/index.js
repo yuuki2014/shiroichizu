@@ -10,7 +10,6 @@
 
 export default {
 	async fetch(request, env, ctx) {
-		console.log(getCookie(request, "media_access_grant"))
 		const url = new URL(request.url);
 		const match = url.pathname.match(/^\/(?:variants\/)?posts\/(\d+)\/(.+)$/);
 
@@ -43,6 +42,7 @@ export default {
 		// R2のカスタムドメインへ流す
     const upstreamUrl = new URL(request.url);
 		upstreamUrl.hostname = env.MEDIA_ORIGIN_HOST;
+		upstreamUrl.search = ""; // クエリでキャッシュを分散させない
 
 		const upstreamRequest = new Request(upstreamUrl.toString(), {
 			method: "GET",
@@ -64,8 +64,13 @@ export default {
 			},
 		});
 
+		// 新しいResponseオブジェクトを作る
 		const res = new Response(originRes.body, originRes);
 
+		// 不要なヘッダーを削除
+		res.headers.delete("set-cookie");
+
+		// キャッシュヘッダーを上書き
 		if ((originRes.status >= 200 && originRes.status < 300) || originRes.status === 304) {
 			res.headers.set(
 				"Cache-Control",
@@ -76,8 +81,6 @@ export default {
 		} else {
 			res.headers.set("Cache-Control", "no-store");
 		}
-
-		console.log(res)
 
 		return res;
 	}

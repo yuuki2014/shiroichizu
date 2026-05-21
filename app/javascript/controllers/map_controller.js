@@ -274,6 +274,7 @@ export default class extends BaseMapController {
 
   // geolocate発火時のコールバック関数
   handleGeolocate = (data) => {
+    console.log("handleGeolacate起動")
     if (!this.map || !this.element.isConnected) return; // ガード
 
     this.updateCurrentPositionState(data);

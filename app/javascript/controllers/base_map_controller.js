@@ -138,6 +138,8 @@ export default class extends Controller {
     const error = event.error;
     const message = error?.message || "";
 
+    this.mapInitEnd = true;
+
     console.warn("[map:error]", error);
 
     const isPmtilesByteServingError =
@@ -192,6 +194,7 @@ export default class extends Controller {
 
       const styleJson = await res.json();
       this.constructor.styleJsonCache = structuredClone(styleJson);
+
       return structuredClone(styleJson);
     } catch (error) {
       if (error.name === "AbortError") {
