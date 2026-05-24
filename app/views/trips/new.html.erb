@@ -27,6 +27,7 @@
       </div>
     </div>
 
+    <%= turbo_stream_from [current_user, :map_image_updates] %>
   </div>
 </div>
 <% if cookies[:terms_accepted] != "true" && cookies[:tutorials_end] != "true" && !user_signed_in? %>

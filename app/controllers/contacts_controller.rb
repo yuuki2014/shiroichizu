@@ -42,7 +42,7 @@ class ContactsController < ApplicationController
   private
 
   def within_rate_limit?
-    cache_key = "contact:#{current_user.id}:#{Time.current.strftime('%Y%m%d%H')}"
+    cache_key = "contact:#{current_user&.id}:#{Time.current.strftime('%Y%m%d%H')}"
     count = Rails.cache.read(cache_key).to_i
     return false if count >= HOURLY_LIMIT
 

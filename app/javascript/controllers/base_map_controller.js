@@ -2,7 +2,7 @@ import { Controller } from "@hotwired/stimulus"
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import ngeohash from 'ngeohash';
-import { get } from "@rails/request.js"
+import { get, post } from "@rails/request.js"
 import { Protocol } from "pmtiles";
 import * as Sentry from "@sentry/browser";
 import { STATUS } from "../constants/status";
@@ -14,10 +14,11 @@ const INITIAL_ZOOM_LEVEL = 17;    // 初期のズームレベル
 export default class extends Controller {
   static styleJsonCache = null;
   static outlets = [ "ui", "posts" ]
-  static targets = [ "mapOverlay", "appendMarker" ]
+  static targets = [ "mapOverlay", "appendMarker", "iconReady" ]
   static values = { longitude: Number,
                     latitude: Number,
                     posts: Array,
+                    postsUrl: String,
                   }
 
   connect(_element) {
@@ -86,12 +87,17 @@ export default class extends Controller {
       style: this.styleJson,
       center: center,
       zoom: INITIAL_ZOOM_LEVEL,
+      maxZoom: 24,
       attributionControl: false,
     });
 
     // 地図のスタイル、初期ソースのロード完了
-    this.map.once("load", () => {
+    this.map.once("load", async () => {
       this.mapLoadedOnce = true;
+      await this.loadIcon(); // アイコン,source,layerの初期設定
+      this.loadPosts(); // 投稿データを取得して反映
+      this.setuplazyLoadImagesEvent();
+      this.setPostsEvents();
     });
     this.map.on("webglcontextrestored", this.handleWebGLContextRestored); // webglコンテキスト消失時にカスタムレイヤーを再設定
     this.map.on("error", this.handleMapError); // 地図読み込み失敗時に、リロードモーダルを表示
@@ -314,59 +320,409 @@ export default class extends Controller {
     }
   }
 
-  // postsValueのデータを全てマップに追加
-  addMarkers(){
-    // データがない場合は何もしない
-    if(!this.hasPostsValue) return;
-    if (!this.postsValue?.length) return
-
-    // postsValueのデータをpopupで追加
-    this.postsValue.forEach(post => {
-      this.createPopup(post);
-    })
+  clearMapIcon(){
+    this.initPostsData();
+    this.refreshPostsLayer();
   }
 
-  removeMarker(postUid){
-    this.markers[postUid]?.remove();
-    delete this.markers[postUid];
+  // デフォルトアイコンの読み込みと初期設定
+  async loadIcon() {
+    try {
+      const image = await this.map.loadImage("/images/default-pin.png");
+
+      if (!this.map.hasImage("default-pin")) {
+        this.map.addImage("default-pin", image.data);
+      }
+
+      this.addPostsLayer();
+    } catch (error) {
+      console.error("画像の読み込み、または追加でエラーが発生しました:", error);
+    }
+  }
+
+  // レイヤーの追加
+  addPostsLayer() {
+    // ソースの追加
+    this.map.addSource('posts', {
+      type: 'geojson',
+      data: { type: 'FeatureCollection', features: [] }, // 最初は空
+      cluster: true,
+      clusterMaxZoom: 21, // クラスターを解除するレベル
+      clusterRadius: 23,   // クラスターにまとめるピクセル半径
+      maxzoom: 24
+    });
+
+    // クラスターレイヤー
+    this.map.addLayer({
+      id: 'clusters',
+      type: 'circle',
+      source: 'posts',
+      filter: ['has', 'point_count'], // クラスターデータのみ対象
+      paint: {
+        'circle-color': '#F7DAA0', // 円の色
+        'circle-radius': 20,       // 円の大きさ
+        'circle-stroke-width': 2,
+        'circle-stroke-color': '#fff'
+      }
+    });
+
+    // クラスター内の数字を表示するレイヤー
+    this.map.addLayer({
+      id: 'cluster-count',
+      type: 'symbol',
+      source: 'posts',
+      filter: ['has', 'point_count'],
+      layout: {
+        'text-field': '{point_count}', // 件数を表示
+        'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
+        'text-size': 12
+      }
+    });
+
+    // 単体の投稿を表示するレイヤー
+    this.map.addLayer({
+      id: 'unclustered-point',
+      type: 'symbol',
+      source: 'posts',
+      filter: ['!', ['has', 'point_count']], // クラスターではないもの
+      layout: {
+        'icon-image': [
+          'case',
+          ['boolean', ['get', 'is_icon_loaded'], false],
+          ['get', 'public_uid'], // 画像読み込み完了後はpublic_uid
+          'default-pin'          // 読み込み前や画像なしはデフォルト画像
+        ],
+        'icon-anchor': 'center',  // ピンの位置
+        'icon-size': 0.5,
+        'icon-allow-overlap': true
+      }
+    });
+
+    this.initPostsData();
+  }
+
+  initPostsData(){
+    // postsDataの初期化
+    this.postsData = {
+      type: "FeatureCollection",
+      features: []
+    }
+  }
+
+  // postsのデータの読み込みと追加
+  async loadPosts(){
+    const postsJson = await this.getPostsJson();
+    if(postsJson) this.addPosts(postsJson);
+  }
+
+  // postsデータの取得
+  async getPostsJson(){
+    const postsUrl = this.postsUrlValue;
+    if (!postsUrl) return false;
+
+    try {
+      const response = await fetch(postsUrl);
+
+      if (!response.ok) throw new Error(`posts取得エラー: ${response.status}`);
+
+      const result = await response.json();
+
+      return result;
+    } catch (error) {
+      console.error(error.message)
+      return false
+    }
+  }
+
+  // postsをthis.mapに追加
+  addPosts(postsJson){
+    this.postsData = postsJson; // インスタンスプロパティに格納
+    this.refreshPostsLayer();
+  }
+
+  // postsの反映と画像の読み込み
+  refreshPostsLayer() {
+    if (!this.map) return;
+
+    const source = this.map.getSource('posts');
+    if (source) {
+      source.setData(this.postsData); // 最新のデータを反映させる
+
+      if (this.lazyLoadImagesScheduled) return;
+      this.lazyLoadImagesScheduled = true;
+      this.map.once("idle", () => {
+        this.lazyLoadImagesScheduled = false;
+        this.lazyLoadImages();
+      });
+    }
+  }
+
+  // 画面内の投稿を検知して画像を読み込む
+  async lazyLoadImages() {
+    if (!this.map || !this.postsData) return;
+
+    // 現在画面内に実際に見えているunclustered-pointのデータをすべて取得
+    const features = this.map.queryRenderedFeatures({ layers: ['unclustered-point'] });
+    let isDataUpdated = false;
+
+    for (const feature of features) {
+      const props = feature.properties;
+      const uid = props.public_uid;
+      const url = props.icon_url;
+
+      if (!uid || !url) continue;
+
+      // 該当するデータを検索
+      let targetFeature = this.postsData.features.find(f => f.properties.public_uid === uid);
+      if (!targetFeature) continue;
+
+      // すでにマップに画像自体は登録されているのに、データ側がロード完了になっていない場合
+      if (this.map.hasImage(uid)) {
+        if (!targetFeature.properties.is_icon_loaded) {
+          targetFeature.properties.is_icon_loaded = true;
+          isDataUpdated = true; // 再描画するフラグを立てる
+        }
+        continue;
+      }
+
+      // マップに画像が登録されていない場合
+      try {
+        // 画像を円形に加工して格納
+        const imageData = await this.createRoundIcon(url, { size: 100, borderWidth: 2 });
+
+        // 処理中にデータが更新されている可能性があるので、targetFeatureを更新する
+        targetFeature = this.postsData.features.find(f => f.properties.public_uid === uid);
+        if (!targetFeature) continue;
+
+        // 処理中に、他の処理で既に登録されていないかチェック
+        if (!this.map.hasImage(uid)) {
+          this.map.addImage(uid, imageData);
+
+          targetFeature.properties.is_icon_loaded = true;
+          isDataUpdated = true;
+        }
+      } catch (error) {
+        console.error(`画像の読み込みに失敗、${uid}:`, error);
+      }
+    }
+
+    // 変更があった場合のみまとめて最新データを反映
+    if (isDataUpdated) {
+      const source = this.map.getSource('posts');
+      if (source) {
+        source.setData(this.postsData);
+      }
+    }
+  }
+
+  // 画像を取得
+  async loadImageWithCredentials(url) {
+    const res = await fetch(url, {
+      credentials: "include", // 認可のためのcookieを渡す必要があるので
+    });
+
+    if (!res.ok) {
+      throw new Error(`画像取得失敗: ${res.status} ${res.statusText}`);
+    }
+
+    const blob = await res.blob();
+
+    return await createImageBitmap(blob); // 生データに変換して返す
+  }
+
+  // 画像を取得して円形に変換
+  async createRoundIcon(url, { size = 64, borderWidth = 4, shadow = true } = {}) {
+    const img = await this.loadImageWithCredentials(url);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+
+    const center = size / 2;
+    const shadowPadding = 6;                    // 影がはみ出さないための余白
+    const outerRadius = center - shadowPadding; // 白枠の外側の半径
+    const bWidth = borderWidth;                 // 白枠の太さ
+    const innerRadius = outerRadius - bWidth;   // 画像が収まる内側の半径
+
+    // ドロップシャドウの設定
+    if (shadow) {
+      ctx.shadowColor = "rgba(0, 0, 0, 0.3)";
+      ctx.shadowBlur = shadowPadding;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 3;
+    }
+
+    // 土台の白い円を塗りつぶし
+    ctx.beginPath();
+    ctx.arc(center, center, outerRadius, 0, Math.PI * 2);
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fill();
+
+    // これ以降の画像描画に影が乗らないように影の設定をリセット
+    ctx.shadowColor = 'transparent';
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 0;
+
+    // 画像を丸型にくり抜くためのクリップ領域を作成
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(center, center, innerRadius, 0, Math.PI * 2);
+    ctx.clip();
+
+    // アスペクト比を維持したセンタークロップの計算
+    const imgWidth = img.width;
+    const imgHeight = img.height;
+    let sx = 0, sy = 0, sw = imgWidth, sh = imgHeight;
+
+    if (imgWidth > imgHeight) {
+      // 横長は左右を削る
+      sw = imgHeight;
+      sx = (imgWidth - imgHeight) / 2;
+    } else {
+      // 縦長は上下を削る
+      sh = imgWidth;
+      sy = (imgHeight - imgWidth) / 2;
+    }
+
+    // クリップされた円の中に画像を描画
+    const x = center - innerRadius;
+    const y = center - innerRadius;
+    const dSize = innerRadius * 2;
+    ctx.drawImage(img, sx, sy, sw, sh, x, y, dSize, dSize);
+
+    // クリップ状態を解除
+    ctx.restore();
+
+    return ctx.getImageData(0, 0, size, size);
+  }
+
+  // 発火時に画面内の画像を表示するようセット
+  setuplazyLoadImagesEvent() {
+    const events = ["moveend", "idle"];
+
+    events.forEach(eventType => {
+      this.map.on(eventType, () => {
+        this.lazyLoadImages();
+      });
+    });
+  }
+
+  // postsのfeatureクリック時のイベントをセット
+  setPostsEvents() {
+    // 単体の投稿をクリックしたとき
+    this.map.on('click', 'unclustered-point', (e) => {
+      const coordinates = e.features[0].geometry.coordinates.slice();
+      const lng = coordinates[0];
+      const lat = coordinates[1];
+      const uid = e.features[0].properties.public_uid
+
+      this.openPostPreview({lng, lat, uid});
+    });
+
+    // クラスターでまとまった投稿をクリックした時
+    this.map.on('click', 'clusters', async (e) => {
+      if (!e.features.length) return;
+
+      const [lng, lat] = e.features[0].geometry.coordinates.slice();
+      const clusterProperties = e.features[0].properties;
+      const clusterId = clusterProperties.cluster_id;   // クラスターのID
+      const pointCount = clusterProperties.point_count; // 件数
+
+
+      // postsからクラスターに属する全ての個別データを引っ張る
+      const source = this.map.getSource('posts');
+      if (!source) return;
+
+      try {
+        // ID,取得件数,オフセット
+        const leaves = await source.getClusterLeaves(clusterId, pointCount, 0);
+        const uids = leaves.map(leaf => leaf.properties.public_uid);
+        this.openPostClusterPreview({lng, lat, uids});
+      } catch(error) {
+        console.log("クラスター取得エラー:", error)
+      }
+    });
+  }
+
+  // 画面上の投稿を削除
+  removePost(uid){
+    if(!this.postsData.features) return;
+
+    this.postsData.features = this.postsData.features.filter(f => f.properties.public_uid !== uid);
+    this.refreshPostsLayer();
+  }
+
+  // postsUrlValueが変更された時に発火
+  postsUrlValueChanged(newUrl){
+    if(newUrl){
+      this.loadPosts();
+    }
   }
 
   // appendMarkerTargetが接続されたときにマップにマーカーを追加
   appendMarkerTargetConnected(element){
     const post = JSON.parse(element.dataset.post)
 
-    // targetのpostのデータをpopupで追加
-    this.createPopup(post);
+    this.addSinglePost(post);
 
     element.remove() // 使い終わったら消す
   }
 
-  createPopup(post){
-    // マーカーを作成
-    const marker = new maplibregl.Marker({
-      color: "#FF5733", // ピンの色
-      // element: el // 独自画像アイコン
-    })
-    .setLngLat([post.longitude, post.latitude]) // 座標をセット
-    .addTo(this.map) // 地図に追加
+  // 投稿時に一つだけ追加
+  addSinglePost(newPost) {
+    if (this.postsData && this.postsData.features) {
 
-    const el = marker.getElement();
+      const newFeature = {
+        type: "Feature",
+        geometry: {
+          type: "Point",
+          coordinates: [newPost.longitude, newPost.latitude]
+        },
+        properties: {
+          public_uid: newPost.public_uid,
+          icon_url: "",
+          is_icon_loaded: false
+        }
+      }
 
-    el.setAttribute("data-action", `click->${this.identifier}#openPostPreview`);
+      this.postsData.features.push(newFeature);
 
-    el.setAttribute("data-post-uid", post.public_uid);
-    el.setAttribute("data-post-lng", post.longitude);
-    el.setAttribute("data-post-lat", post.latitude);
-
-    this.markers[post.public_uid] = marker;
+      this.refreshPostsLayer();
+    }
   }
 
-  openPostPreview(event) {
-    const el = event.currentTarget;
+  // iconReadyTarget追加時に発火
+  iconReadyTargetConnected(element) {
+    const uid = element.dataset.uid;
+    const iconUrl = element.dataset.iconUrl;
 
-    const uid = el.getAttribute("data-post-uid");
-    const lng = parseFloat(el.getAttribute("data-post-lng"));
-    const lat = parseFloat(el.getAttribute("data-post-lat"));
+    this.updatePostIconUrl(uid, iconUrl);
+
+    element.remove();
+  }
+
+  // 対象のpostsDataのicon urlを更新
+  updatePostIconUrl(uid, iconUrl) {
+    if (!this.postsData?.features) return;
+
+    const feature = this.postsData.features.find(
+      f => f.properties.public_uid === uid
+    );
+
+    if (!feature) return;
+
+    feature.properties.icon_url = iconUrl;
+    feature.properties.is_icon_loaded = false;
+
+    this.refreshPostsLayer();
+  }
+
+  // postのプレビューを開く
+  openPostPreview({lng = null, lat = null, uid = null} = {}) {
+    if (!lng || !lat || !uid) return;
+
     const moveHeight = window.innerHeight / 4;
 
     const point = this.map.project([lng, lat]); // マーカーの緯度経度を画面上のピクセル座標に変換
@@ -381,6 +737,24 @@ export default class extends Controller {
     get(`/posts/${uid}/preview`, { responseKind: "turbo-stream" });
   }
 
+  openPostClusterPreview({lng = null, lat = null, uids = null} = {}){
+    if (!lng || !lat || !uids) return;
+
+    const moveHeight = window.innerHeight / 2.5;
+
+    const point = this.map.project([lng, lat]); // マーカーの緯度経度を画面上のピクセル座標に変換
+    point.y += moveHeight; // yを移動
+    const newCenter = this.map.unproject(point); // ずらしたピクセル座標を緯度軽度に変換
+
+    this.map.easeTo({
+      center: newCenter,
+      duration: 500,
+    });
+
+    post(`/posts/cluster_preview`, { body: { uids }, responseKind: "turbo-stream" });
+  }
+
+  // 霧の初期値データ
   getFogConfig() {
     return {
       opacity: 0.9,

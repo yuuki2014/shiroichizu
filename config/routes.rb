@@ -54,6 +54,9 @@ Rails.application.routes.draw do
   end
 
   resources :posts, only: %i[ index show destroy ] do
+    collection do
+      post :cluster_preview
+    end
     member do
       get :preview
       get :image_viewer

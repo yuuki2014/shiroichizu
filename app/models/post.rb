@@ -29,11 +29,12 @@ class Post < ApplicationRecord
 
   # enum 定義
   # 投稿の公開ステータス
-  # 地図に合わせる:0, 全体公開:10 フォロワー限定:10, 非公開:20
+  # 地図に合わせる:0, 全体公開:10 フォロワー限定:20, 非公開:30
   enum :visibility, { inherit_trip: 0, public: 10, follower: 20, private: 30 }, prefix: true
 
-  scope :listed_publicly, -> {
-    joins(:trip).where(
+  # 全ユーザー向けの投稿一覧のスコープ
+  scope :explore_visible, -> {
+    left_joins(:trip).where(
       "posts.visibility = :public OR (posts.visibility = :inherit_trip AND trips.status = :trip_public)",
       public: visibilities[:public],
       inherit_trip: visibilities[:inherit_trip],
@@ -41,7 +42,23 @@ class Post < ApplicationRecord
     )
   }
 
-
+  # 投稿の閲覧権限チェック
+  scope :visible_to, ->(user) {
+    left_joins(:trip).where(
+      [
+        user.present? ? "posts.user_id = :user_id" : nil,
+        "posts.visibility = :public",
+        "(posts.visibility = :inherit_trip AND trips.status IN (:visible_trip_statuses))"
+      ].compact.join(" OR "),
+      user_id: user&.id,
+      public: visibilities[:public],
+      inherit_trip: visibilities[:inherit_trip],
+      visible_trip_statuses: [
+        Trip.statuses[:unlisted],
+        Trip.statuses[:public]
+      ]
+    )
+  }
 
   # バリデーション定義
   validates :user_id, :latitude, :longitude, :visibility, :visited_at, presence: true

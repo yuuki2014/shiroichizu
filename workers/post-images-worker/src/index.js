@@ -10,11 +10,32 @@
 
 export default {
 	async fetch(request, env, ctx) {
+		const ALLOWED_ORIGINS = new Set([
+			env.APP_ORIGIN,
+			"https://www.shiroichizu.app",
+			"https://shiroichizu.fly.dev",
+		]);
+
+		if (request.method === "OPTIONS") {
+			return withCors(
+				request,
+				new Response(null, {
+					status: 204,
+					headers: {
+						"Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
+						"Access-Control-Allow-Headers": "Content-Type, Range",
+						"Access-Control-Max-Age": "86400",
+					},
+				}),
+				ALLOWED_ORIGINS
+			);
+		}
+
 		const url = new URL(request.url);
 		const match = url.pathname.match(/^\/(?:variants\/)?posts\/(\d+)\/(.+)$/);
 
 		if (!match) {
-			return new Response("Not Found", { status: 404 });
+			return withCors(request, new Response("Not Found", { status: 404 }), ALLOWED_ORIGINS);
 		}
 
 		const postId = Number(match[1]);
@@ -23,7 +44,7 @@ export default {
 		// jwtを取得
 		const token = getCookie(request, "media_access_grant");
 		if (!token) {
-			return new Response("Forbidden", { status: 403 });
+			return withCors(request, new Response("Forbidden", { status: 403 }), ALLOWED_ORIGINS);
 		}
 
 		// jwtを検証
@@ -31,12 +52,12 @@ export default {
 		try {
 			payload = await verifyJWT(token, env.MEDIA_JWT_SECRET);
 		} catch (e) {
-			return new Response("Forbidden", { status: 403 });
+			return withCors(request, new Response("Forbidden", { status: 403 }), ALLOWED_ORIGINS);
 		}
 
 		// postIdの認可チェック
 		if (!Array.isArray(payload.post_ids) || !payload.post_ids.includes(postId)) {
-			return new Response("Forbidden", { status: 403 });
+			return withCors(request, new Response("Forbidden", { status: 403 }), ALLOWED_ORIGINS);
 		}
 
 		// R2のカスタムドメインへ流す
@@ -82,7 +103,7 @@ export default {
 			res.headers.set("Cache-Control", "no-store");
 		}
 
-		return res;
+		return withCors(request, res, ALLOWED_ORIGINS);
 	}
 };
 
@@ -147,4 +168,32 @@ function getCookie(request, name) {
 
 	const match = cookie.match(new RegExp(`${name}=([^;]+)`));
 	return match ? match[1] : null;
+}
+
+function corsHeaders(request, ALLOWED_ORIGINS) {
+  const origin = request.headers.get("Origin");
+
+  if (!origin || !ALLOWED_ORIGINS.has(origin)) {
+    return {};
+  }
+
+  return {
+    "Access-Control-Allow-Origin": origin,
+    "Access-Control-Allow-Credentials": "true",
+    "Vary": "Origin",
+  };
+}
+
+function withCors(request, response, ALLOWED_ORIGINS) {
+  const headers = new Headers(response.headers);
+
+  for (const [key, value] of Object.entries(corsHeaders(request, ALLOWED_ORIGINS))) {
+    headers.set(key, value);
+  }
+
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
 }

@@ -41,6 +41,7 @@ class PostsController < ApplicationController
       begin
         PostImageAttachService.call(post: @post, files: @images)
         ProcessPostImagesJob.perform_later(@post.id)
+        MediaAccessGrantService.call(posts: @post, cookies: cookies)
         respond_modal(flash_message: { notice: "地図に記録しました" })
       rescue => e
         Rails.logger.error("Post image attach failed: #{e.class} #{e.message}")
@@ -72,6 +73,19 @@ class PostsController < ApplicationController
     end
   end
 
+  def cluster_preview
+    uids = Array(params[:uids]).compact_blank
+
+    @posts = Post.visible_to(current_user).where(public_uid: uids).includes(:trip, user: { avatar_attachment: :blob }).with_attached_images.order(visited_at: :desc)
+
+    if @posts.blank?
+      return respond_modal("shared/flash_message", flash_message: { alert: "投稿が見つかりません" })
+    end
+
+    MediaAccessGrantService.call(posts: @posts, cookies: cookies)
+    respond_modal
+  end
+
   def show
     preview
   end
@@ -92,7 +106,7 @@ class PostsController < ApplicationController
   end
 
   def destroy
-    @post = current_user.posts.with_attached_images.find_by(public_uid: params[:id])
+    @post = current_user&.posts.with_attached_images.find_by(public_uid: params[:id])
 
     if @post.nil?
       respond_modal("shared/flash_message", flash_message: { alert: "この記録は削除できません" })

@@ -3,7 +3,7 @@
     <div id="trip-id-receiver" data-ui-target="tripIdReceiver"
       data-trip-id="<%= @trip&.public_uid %>"
       data-visited-geohashes="<%= @visited_geohashes.to_json %>"
-      data-posts="<%= @posts.to_json %>"
+      data-posts-url="<%= trip_path(@trip.public_uid, format: :json) %>"
     >
     </div>
   <% end %>

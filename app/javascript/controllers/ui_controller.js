@@ -67,13 +67,13 @@ export default class extends Controller {
     this.oldTripGeohashes = [];
     this.mapOutlet.postsValue = [];
     const oldGeohashes = JSON.parse(element.dataset.visitedGeohashes);
-    const oldPosts = JSON.parse(element.dataset.posts);
+    const oldPostsUrl = element.dataset.postsUrl;
 
     if(oldGeohashes){
       this.oldTripGeohashes = oldGeohashes;
     }
-    if(oldPosts){
-      this.mapOutlet.postsValue = oldPosts;
+    if(oldPostsUrl){
+      this.mapOutlet.postsUrlValue = oldPostsUrl;
     }
 
     if (newId) {
@@ -111,7 +111,6 @@ export default class extends Controller {
     // this.mapOutlet.postFootprint();
     this.mapOutlet.recordStartFootprint();
     this.mapOutlet.setFlushTimer();
-    this.mapOutlet.addMarkers();
     // this.mapOutlet.executeFogClearing(true);
     this.mapOutlet.updateRealtimeFogClearing(true);
 
@@ -139,6 +138,8 @@ export default class extends Controller {
     this.mapOutlet.clearFlushTimer();
     this.statusValue = STATUS.ENDED
     this.mapOutlet.setStatus(this.statusValue);
+    this.mapOutlet.postsUrlValue = "";
+    this.mapOutlet.clearMapIcon();
 
     this.mapOutlet.mergeVisitedToCumulative();
     this.mapOutlet.resetFog();
@@ -349,16 +350,14 @@ export default class extends Controller {
     }
   }
 
-  removeMarker(event){
+  removePost(event){
     const postUuid = event.currentTarget.dataset.postUuid;
 
-    console.log(event.currentTarget)
-
     if(this.hasMapOutlet){
-      this.mapOutlet.removeMarker(postUuid);
+      this.mapOutlet.removePost(postUuid);
     }
     if(this.hasHistoryMapOutlet){
-      this.historyMapOutlet.removeMarker(postUuid);
+      this.historyMapOutlet.removePost(postUuid);
     }
   }
 
