@@ -43,8 +43,6 @@ export default class extends BaseMapController {
 
       this.updateCustomFogLayer();
 
-      this.addMarkers();
-
       this.mapInitEnd = true;
       this.maybeClearOverlay();
     })
@@ -105,8 +103,8 @@ export default class extends BaseMapController {
   }
 
   setupCustomFogLayerEvents() {
-    // moveendとzoomendの両方で実行
-    const updateEvents = ["moveend", "zoomend"];
+    // moveendで実行。zoomendも含まれている
+    const updateEvents = ["moveend"];
 
     updateEvents.forEach(eventType => {
       this.map.on(eventType, () => {

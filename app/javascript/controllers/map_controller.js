@@ -92,7 +92,6 @@ export default class extends BaseMapController {
 
     this.setupMapControls(); // 地図のUI設定
     this.setupPulseMarker(); // 現在地のパルス設定
-    this.addMarkers(); // マーカーをセット
     this.setupMapLoadEvents(); // 地図読み込み後の処理
     console.log("-----初期化終了-----")
   }

@@ -36,7 +36,7 @@
           <%= button_to "削除する", post_path(@post),
                 method: :delete,
                 class: "text-red-500",
-                data: { turbo_stream: true, action: "click->modal#close click->ui#removeMarker", post_uuid: @post.public_uid },
+                data: { turbo_stream: true, action: "click->modal#close click->ui#removePost", post_uuid: @post.public_uid },
                 form: { class: "contents" } %>
         </div>
 

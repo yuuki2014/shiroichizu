@@ -44,7 +44,7 @@
   <div class="flex-1 min-h-0 overflow-y-auto overflow-x-hidden pb-28 block w-full">
 
     <% if active_tab == :trips %>
-      <%= render "trips/list", trips: trips, geohash_counts: geohash_counts %>
+      <%= render "trips/list", trips: trips, geohash_counts: geohash_counts, posts_counts: posts_counts %>
     <% elsif active_tab == :posts %>
       <%= render "posts/list", posts: posts %>
     <% end %>

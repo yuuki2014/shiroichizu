@@ -107,7 +107,7 @@ module ApplicationHelper
   end
 
   def show_history_button?
-    controller_name == "trips" && action_name.in?(%w[show]) && @trip.user_id == current_user.id
+    controller_name == "trips" && action_name.in?(%w[show]) && @trip.user_id == current_user&.id
   end
 
   def mypage_card(show_elements)
