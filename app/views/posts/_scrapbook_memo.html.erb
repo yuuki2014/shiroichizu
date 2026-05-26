@@ -1,0 +1,59 @@
+<%# locals: (post:, width_class: "w-[86%]", offset_class: "", line_class: "line-clamp-3", open_body_link: true) %>
+
+<% if post.body.present? %>
+  <% memo_content = capture do %>
+    <section class="relative">
+      <div class="relative border border-[#e4d3af] bg-[#f6ecd6] px-7 pb-5 pt-4 pl-8 text-[#574d41] shadow-[0_8px_18px_rgba(45,35,20,0.14)]">
+        <div class="absolute -top-4 left-1/2 h-6 w-24 -translate-x-1/2 rotate-2 border border-[#b59c70]/45 bg-[#d6c298]/85 shadow-sm"></div>
+
+        <div
+          class="absolute bottom-4 left-2 top-4 w-2 opacity-90"
+          style="
+            background-image: radial-gradient(circle, #d0c1a4 0 3.5px, transparent 4px);
+            background-size: 8px 28px;
+            background-repeat: repeat-y;
+            background-position: top center;
+            filter: drop-shadow(inset 0 1px 1px rgba(0, 0, 0, 0.18));
+          "
+        ></div>
+
+        <div
+          class="pointer-events-none absolute bottom-4 left-6 right-4 top-4 opacity-[0.14]"
+          style="
+            background-image: repeating-linear-gradient(
+              to bottom,
+              transparent 0px,
+              transparent 27px,
+              #b9ab8c 27px,
+              #b9ab8c 28px
+            );
+          "
+        ></div>
+
+        <p
+          class="relative z-10 <%= line_class %> min-h-[5.25rem] whitespace-pre-wrap break-words font-serif text-[14px] leading-7 tracking-[0.04em] text-[#4f4639]"
+          style="font-family: 'Klee One', 'Zen Kurenaido', 'Hiragino Mincho ProN', serif;"
+        ><%= post.body %></p>
+
+        <div class="absolute bottom-3 right-3 h-12 w-6 opacity-60">
+          <div class="absolute bottom-0 left-1/2 h-11 w-px origin-bottom rotate-[18deg] bg-[#b9a36f]"></div>
+          <div class="absolute bottom-8 left-1 h-2 w-2 rounded-full bg-[#d8bf6c]"></div>
+          <div class="absolute bottom-5 right-1 h-1.5 w-1.5 rounded-full bg-[#d8bf6c]"></div>
+          <div class="absolute bottom-10 right-0 h-1.5 w-1.5 rounded-full bg-[#d8bf6c]"></div>
+        </div>
+      </div>
+    </section>
+  <% end %>
+
+  <% if open_body_link %>
+    <%= link_to show_body_post_path(post),
+                class: "block relative #{width_class} -rotate-1 #{offset_class}",
+                data: { turbo_stream: true } do %>
+      <%= memo_content %>
+    <% end %>
+  <% else %>
+    <div class="block relative <%= width_class %> -rotate-1 <%= offset_class %>">
+      <%= memo_content %>
+    </div>
+  <% end %>
+<% end %>

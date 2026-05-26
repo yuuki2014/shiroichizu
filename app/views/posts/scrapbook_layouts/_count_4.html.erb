@@ -1,0 +1,31 @@
+<% slots = [0, 1, :memo, 2, 3] %>
+
+<div class="mx-auto grid h-full w-full max-w-[390px] grid-cols-2 grid-rows-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-x-5 gap-y-1">
+  <% rotate_classes = ["-rotate-3", "rotate-3", "-rotate-2", "rotate-2"] %>
+  <% offset_classes = ["translate-y-1", "-translate-y-1", "translate-y-1", "-translate-y-1"] %>
+
+  <% slots.each do |slot| %>
+    <% if slot == :memo %>
+      <div class="col-span-2 z-30 flex min-w-0 items-center justify-center">
+        <%= render "posts/scrapbook_memo",
+                    post: post,
+                    width_class: "w-[84%]" %>
+      </div>
+    <% else %>
+      <% index = slot %>
+
+      <%# 上段は下寄せ、下段は上寄せ %>
+      <% vertical_align_class = index < 2 ? "items-end" : "items-start" %>
+
+      <div class="flex min-h-0 min-w-0 <%= vertical_align_class %> justify-center overflow-visible">
+        <%= render "posts/scrapbook_photo",
+                    post: post,
+                    image: images[index],
+                    index: index,
+                    rotate_class: rotate_classes[index],
+                    width_class: "w-[90%]",
+                    offset_class: offset_classes[index] %>
+      </div>
+    <% end %>
+  <% end %>
+</div>

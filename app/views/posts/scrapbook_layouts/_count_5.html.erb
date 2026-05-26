@@ -1,0 +1,43 @@
+<div class="mx-auto grid h-full w-full max-w-[390px] grid-cols-2 grid-rows-[1fr_1fr_auto_1fr] items-center gap-x-5 gap-y-2">
+  <% rotate_classes = ["-rotate-3", "rotate-3", "-rotate-2", "rotate-2", "-rotate-2"] %>
+  <% offset_classes = ["-translate-y-4", "-translate-y-5", "-translate-y-2", "-translate-y-3", "translate-y-1"] %>
+
+  <%# 各画像のz index %>
+  <% z_classes = [
+    "z-20",
+    "z-20",
+    "z-20",
+    "z-20",
+    "z-20"
+  ] %>
+
+  <% images.first(4).each_with_index do |image, index| %>
+    <div class="flex min-h-0 min-w-0 items-center justify-center">
+      <%= render "posts/scrapbook_photo",
+                  post: post,
+                  image: image,
+                  index: index,
+                  rotate_class: rotate_classes[index],
+                  width_class: "w-[78%]",
+                  offset_class: offset_classes[index],
+                  z_class: z_classes[index] %>
+    </div>
+  <% end %>
+
+  <div class="col-span-2 flex min-w-0 items-center justify-center -translate-y-1 z-10">
+    <%= render "posts/scrapbook_memo",
+                post: post,
+                width_class: "w-[84%]" %>
+  </div>
+
+  <div class="col-span-2 flex min-h-0 min-w-0 items-center justify-center">
+    <%= render "posts/scrapbook_photo",
+                post: post,
+                image: images[4],
+                index: 4,
+                rotate_class: rotate_classes[4],
+                width_class: "w-[42%]",
+                offset_class: offset_classes[4],
+                z_class: z_classes[4] %>
+  </div>
+</div>
