@@ -393,7 +393,7 @@ export default class extends Controller {
           'default-pin'          // 読み込み前や画像なしはデフォルト画像
         ],
         'icon-anchor': 'center',  // ピンの位置
-        'icon-size': 0.5,
+        'icon-size': 0.6,
         'icon-allow-overlap': true
       }
     });

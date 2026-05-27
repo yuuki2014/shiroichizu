@@ -58,6 +58,7 @@ Rails.application.routes.draw do
       post :cluster_preview
     end
     member do
+      get :show_body
       get :preview
       get :image_viewer
       get :confirm_destroy

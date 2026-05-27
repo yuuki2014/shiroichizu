@@ -90,6 +90,21 @@ class PostsController < ApplicationController
     preview
   end
 
+  def show_body
+    @post = Post.includes(:trip, :user).find_by(public_uid: params[:id])
+
+    if @post.nil?
+      return respond_modal("shared/flash_message", flash_message: { alert: "投稿が見つかりません" })
+    end
+
+    if @post.visible_to?(current_user)
+      MediaAccessGrantService.call(posts: @post, cookies: cookies)
+      respond_modal
+    else
+      respond_modal("shared/flash_message", flash_message: { alert: "この投稿は表示できません" })
+    end
+  end
+
   def image_viewer
     preview
   end

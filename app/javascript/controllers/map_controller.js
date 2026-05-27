@@ -109,7 +109,6 @@ export default class extends BaseMapController {
         timeout: GEOLOCATE_TIMEOUT
       },
       trackUserLocation: true, // 移動に合わせてドットが動く
-      showUserHeading: true, // スマホの向いている方角を表示
       showAccuracyCircle: false, // GPSの誤差の範囲を表示
       fitBoundsOptions: { // ズームカメラの設定
       }

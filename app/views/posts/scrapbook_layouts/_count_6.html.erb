@@ -1,0 +1,66 @@
+<% slots = [0, 1, 2, 3, :memo, 4, 5] %>
+
+<%# 各写真の角度 %>
+<% rotate_classes = [
+  "-rotate-[2deg]",
+  "rotate-[3deg]",
+  "-rotate-[6deg]",
+  "rotate-[2deg]",
+  "rotate-[2deg]",
+  "rotate-[4deg]"
+] %>
+
+<%# 各画像の横幅 %>
+<% width_classes = [
+  "w-[81%]",
+  "w-[81%]",
+  "w-[78%]",
+  "w-[78%]",
+  "w-[79%]",
+  "w-[79%]"
+] %>
+
+<%# 各画像の位置 %>
+<% offset_classes = [
+  "-translate-x-2 -translate-y-2",
+  "translate-x-2 -translate-y-3",
+  "-translate-x-1 translate-y-0",
+  "translate-x-2 -translate-y-1",
+  "-translate-x-4 translate-y-1",
+  "translate-x-1 translate-y-1"
+] %>
+
+<%# 各画像のz index %>
+<% z_classes = [
+  "z-40",
+  "z-40",
+  "z-40",
+  "z-40",
+  "z-40",
+  "z-40"
+] %>
+
+<div class="mx-auto grid h-full w-full max-w-[388px] grid-cols-2 grid-rows-[1fr_1fr_auto_1fr] items-center gap-x-0 gap-y-0">
+  <% slots.each do |slot| %>
+    <% if slot == :memo %>
+      <div class="col-span-2 flex min-w-0 items-center justify-center translate-y-0 z-30">
+        <%= render "posts/scrapbook_memo",
+                    post: post,
+                    width_class: "w-[82%]" %>
+      </div>
+    <% else %>
+      <% index = slot %>
+
+      <div class="flex min-h-0 min-w-0 items-center justify-center overflow-visible">
+        <%= render "posts/scrapbook_photo",
+                    image: images[index],
+                    post: post,
+                    index: index,
+                    rotate_class: rotate_classes[index],
+                    width_class: width_classes[index],
+                    offset_class: offset_classes[index],
+                    z_class: z_classes[index] %>
+      </div>
+    <% end %>
+  <% end %>
+</div>
