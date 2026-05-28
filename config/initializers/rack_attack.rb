@@ -55,7 +55,7 @@ class Rack::Attack
     [
       403,
       { "Content-Type" => "text/plain; charset=utf-8" },
-      ["Forbidden"]
+      [ "Forbidden" ]
     ]
   end
 
@@ -78,7 +78,7 @@ class Rack::Attack
           </template>
         </turbo-stream>
       HTML
-      [ 429,headers.merge("Content-Type" => "text/vnd.turbo-stream.html; charset=utf-8"), [ body ] ]
+      [ 429, headers.merge("Content-Type" => "text/vnd.turbo-stream.html; charset=utf-8"), [ body ] ]
     else
       body = File.read(Rails.root.join("public/429.html"))
       [ 429, headers.merge("Content-Type" => "text/html; charset=utf-8"), [ body ] ]
