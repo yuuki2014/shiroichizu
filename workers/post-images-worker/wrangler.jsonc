@@ -14,12 +14,6 @@
 	"compatibility_flags": [
 		"nodejs_compat"
 	],
-	"r2_buckets": [
-		{
-			"binding": "POSTS_BUCKET",
-			"bucket_name": "white-map-app-production"
-		}
-	],
 	"routes": [
 		{
 			"pattern": "media.shiroichizu.app",
@@ -36,14 +30,7 @@
 			"vars": {
 				"APP_ORIGIN": "http://localhost:3000",
 				"MEDIA_ORIGIN_HOST": "media-origin-dev.shiroichizu.app"
-			},
-			"r2_buckets": [
-				{
-					"binding": "POSTS_BUCKET",
-					"bucket_name": "shiroichizu-dev",
-					"remote": true
-				}
-			]
+			}
 		}
 	}
 	/**

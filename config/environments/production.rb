@@ -126,7 +126,11 @@ Rails.application.configure do
 
   # Rack::Attack用にキャッシュストアを有効
   config.action_controller.perform_caching = true
-  config.cache_store = :memory_store
+  config.cache_store = :redis_cache_store, {
+    url: ENV.fetch("REDIS_URL"),
+    namespace: "shiroichizu:cache",
+    expires_in: 1.day
+  }
 
   config.active_storage.track_variants = false
 end

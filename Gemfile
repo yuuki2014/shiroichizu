@@ -86,3 +86,7 @@ gem "rack-attack", "~> 6.8"
 gem "faraday", "~> 2.14"
 
 gem "jwt", "~> 3.1"
+
+gem "redis", "~> 5.4"
+
+gem "connection_pool", "< 3.0"

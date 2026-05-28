@@ -12,6 +12,9 @@ module.exports = {
       fontFamily: {
         sans: ['"Noto Sans JP"', 'system-ui', 'sans-serif'],
         rounded: ['"M PLUS Rounded 1c"', '"Noto Sans JP"', 'sans-serif'],
+        klee: ['"Klee One"', '"Noto Sans JP"', 'sans-serif'],
+        yusei: ['"Yusei Magic"', '"Noto Sans JP"', 'sans-serif'],
+        yomogi: ['"Yomogi"', '"Noto Sans JP"', 'sans-serif'],
       },
     },
   },

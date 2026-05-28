@@ -65,6 +65,7 @@ RUN AWS_EC2_METADATA_DISABLED=true \
     R2_PUBLIC_SECRET_ACCESS_KEY=dummy_for_build \
     R2_PUBLIC_BUCKET=dummy_bucket \
     R2_ENDPOINT=https://dummy.r2.cloudflarestorage.com \
+    REDIS_URL=redis://localhost:6379/1 \
     ./bin/rails assets:precompile
 
 

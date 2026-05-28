@@ -12,6 +12,7 @@ Rails.application.routes.draw do
   }
   resources :users, only: %i[ show ] do
     collection do
+      get :confirm_destroy
     end
   end
 
