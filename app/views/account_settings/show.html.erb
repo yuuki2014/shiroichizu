@@ -49,15 +49,16 @@
       </div>
 
       <div class="flex justify-between items-center border-b border-gray-200 py-2 last:border-b-0 text-gray-700">
-        <%= button_to destroy_user_session_path,
-            method: :delete,
+        <%= button_to confirm_destroy_users_path,
+            method: :get,
+            data: { turbo_stream: true },
             class: "flex items-center gap-3 text-red-500 hover:text-red-700" do %>
 
           <div class="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center">
             <%= lucide_icon('user-x', class: "w-4 h-4 text-red-500") %>
           </div>
 
-          <span>退会（準備中）</span>
+          <span>退会</span>
         <% end %>
       </div>
 

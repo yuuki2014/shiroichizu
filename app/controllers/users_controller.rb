@@ -62,6 +62,10 @@ class UsersController < ApplicationController
     end
   end
 
+  def confirm_destroy
+    respond_modal
+  end
+
   def mypage
     if user_signed_in? && current_user
       redirect_to user_path(current_user)
