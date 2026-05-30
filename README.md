@@ -29,26 +29,30 @@ https://shiroichizu.app
 
 ## 開発背景
 
-地図アプリは、今や移動に欠かせない便利な存在です。一方で、目的地まで最短で向かうことに意識が向きすぎると、道中の景色や小さな発見を見落としてしまうことがあります。
+私は普段、Google Mapを見ながら目的地まで最短で向かうことが多く、移動中も「どうすれば早く着けるか」ばかりを考えていました。
 
-ある日彼女が、道端の花や金木犀の香り、雨上がりの虹に気づいていました。私は全く気づいていなくて、同じ道を歩いていても見えている世界がまったく違うのだと愕然とし、憧れを感じました。自分も、目的地へ向かうだけでなく道中の発見を楽しめるようになりたいと思ったことが、このアプリを作ったきっかけです。
+一方で、彼女と街を歩いていると、彼女は道端の花や金木犀の香り、雨上がりの虹など、私がまったく気づかなかったものを次々と見つけていました。同じ道を歩いているはずなのに、見えている世界がまったく違うことに驚き、自分もそんなふうに道中の小さな発見を楽しめるようになりたいと思いました。
 
-シロイチズは、あえて地図を白い霧で覆い、実際に歩いた場所だけを見えるようにすることで、効率や最短ルートから少し離れ、歩くこと自体を楽しめる体験を目指しています。さらに、道中で見つけた景色や感じたことを写真やメモとして地図上に残すことで、自分だけの発見や思いがこもった地図を作れるサービスとなっています。
+シロイチズは、その思いから作ったアプリです。
+
+あえて地図を白い霧で覆い、実際に自分の足で歩いた場所だけが少しずつ見えるようにすることで、効率や最短ルートから少し離れ、歩くこと自体を楽しめる体験を目指しています。
+
+さらに、道中で見つけた景色や、そのとき感じたことを写真やメモとして地図上に残せるようにしました。ただの移動ログではなく、自分だけの発見や思いが積み重なっていく「感情の地図」を作れるサービスにしたいと考えています。
 
 ## スクリーンショット
 
 <div align="center">
-  <img src="./docs/images/screenshots/top.png" width="220" alt="探索前の地図画面">
-  <img src="./docs/images/screenshots/trips-new.png" width="220" alt="探索中の地図画面">
-  <img src="./docs/images/screenshots/posts-new.png" width="220" alt="投稿作成画面">
-  <img src="./docs/images/screenshots/trips-show.png" width="220" alt="完成した地図の再現画面">
+  <img src="./docs/images/screenshots/top.png" width="180" alt="探索前の地図画面">
+  <img src="./docs/images/screenshots/trips-new.png" width="180" alt="探索中の地図画面">
+  <img src="./docs/images/screenshots/posts-new.png" width="180" alt="投稿作成画面">
+  <img src="./docs/images/screenshots/trips-show.png" width="180" alt="完成した地図の再現画面">
 </div>
 
 <div align="center">
-  <img src="./docs/images/screenshots/posts-show.png" width="220" alt="投稿詳細画面">
-  <img src="./docs/images/screenshots/cluster-posts-show.png" width="220" alt="周辺投稿一覧">
-  <img src="./docs/images/screenshots/explore-trips-index.png" width="220" alt="みんなの地図画面">
-  <img src="./docs/images/screenshots/explore-posts-index.png" width="220" alt="みんなの記録画面">
+  <img src="./docs/images/screenshots/posts-show.png" width="180" alt="投稿詳細画面">
+  <img src="./docs/images/screenshots/cluster-posts-show.png" width="180" alt="周辺投稿一覧">
+  <img src="./docs/images/screenshots/explore-trips-index.png" width="180" alt="みんなの地図画面">
+  <img src="./docs/images/screenshots/explore-posts-index.png" width="180" alt="みんなの記録画面">
 </div>
 
 ## 主な機能
@@ -103,7 +107,7 @@ https://shiroichizu.app
 現在は、MapLibre GL JSのカスタムレイヤーとしてWebGLを利用し、GPU側で霧の描画と探索済みエリアのマスク処理を行う方式に変更しています。
 これにより、大量のgeohashセルや複雑なポリゴン演算をJavaScript側で毎回処理する必要を減らし、探索済みエリアが増えても比較的軽量に霧の表示を行えるようにしました。
 
-また、WebGLのコンテキストはブラウザのメモリ状況やバックグラウンド復帰時に失われることがあるため`webglcontextrestored`イベントを検知し、カスタムレイヤーを再初期化して霧表示を復旧する処理も実装しています。
+また、WebGLのコンテキストはブラウザのメモリ状況やバックグラウンド復帰時に失われることがあるため「webglcontextrestored」イベントを検知し、カスタムレイヤーを再初期化して霧表示を復旧する処理も実装しています。
 
 ### Cloudflare Workersを用いた画像配信と認可制御
 
@@ -199,7 +203,7 @@ Figma：https://www.figma.com/design/2NG3yydL45v7LcEbcWVnDs/%E7%94%BB%E9%9D%A2%E
 
 ## 環境構築
 
-必要な環境変数は`.env.example`を参照してください。
+必要な環境変数は「.env.example」を参照してください。
 本番環境ではFly.ioのSecretsとCloudflare Workersの環境変数に設定しています。
 
 ## 関連ドキュメント

@@ -69,7 +69,7 @@ class PostsController < ApplicationController
       MediaAccessGrantService.call(posts: @post, cookies: cookies)
       respond_modal
     else
-      respond_modal("shared/flash_message", flash_message: { alert: "この投稿は表示できません" })
+      respond_modal("shared/flash_message", flash_message: { alert: "投稿が見つかりません" })
     end
   end
 
@@ -101,7 +101,7 @@ class PostsController < ApplicationController
       MediaAccessGrantService.call(posts: @post, cookies: cookies)
       respond_modal
     else
-      respond_modal("shared/flash_message", flash_message: { alert: "この投稿は表示できません" })
+      respond_modal("shared/flash_message", flash_message: { alert: "投稿が見つかりません" })
     end
   end
 
