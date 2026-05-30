@@ -58,6 +58,7 @@ jobs:
       R2_PUBLIC_BUCKET: "dummy"
       R2_PUBLIC_SECRET_ACCESS_KEY: "dummy"
       R2_PUBLIC_ACCESS_KEY_ID: "dummy"
+      REDIS_URL: redis://localhost:6379/0
 
     services:
       postgres:
@@ -92,7 +93,7 @@ jobs:
         env:
           RAILS_ENV: test
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/myapp_test
-          REDIS_URL: redis://localhost:6379/0
+          # REDIS_URL: redis://localhost:6379/0
         run: bin/rails db:prepare
 
       - name: Run RSpec
