@@ -58,6 +58,9 @@ jobs:
       R2_PUBLIC_BUCKET: "dummy"
       R2_PUBLIC_SECRET_ACCESS_KEY: "dummy"
       R2_PUBLIC_ACCESS_KEY_ID: "dummy"
+      REDIS_URL: "redis://localhost:6379/0"
+      MEDIA_JWT_SECRET: "dummy"
+      STYLE_URL: "dummy"
 
     services:
       postgres:
@@ -88,17 +91,32 @@ jobs:
           ruby-version: .ruby-version
           bundler-cache: true
 
-      - name: Run tests
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: yarn
+
+      - name: Install JavaScript packages
+        run: yarn install --frozen-lockfile
+
+      - name: Build JavaScript
+        run: yarn build
+
+      - name: Build Tailwind CSS
         env:
           RAILS_ENV: test
-          DATABASE_URL: postgres://postgres:postgres@localhost:5432
-          REDIS_URL: redis://localhost:6379/0
-        run: bin/rails db:test:prepare test test:system
+        run: bin/rails tailwindcss:build
 
-      - name: Keep screenshots from failed system tests
-        uses: actions/upload-artifact@v6
-        if: failure()
-        with:
-          name: screenshots
-          path: ${{ github.workspace }}/tmp/screenshots
-          if-no-files-found: ignore
+      - name: Prepare test database
+        env:
+          RAILS_ENV: test
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/myapp_test
+          # REDIS_URL: redis://localhost:6379/0
+        run: bin/rails db:prepare
+
+      - name: Run RSpec
+        env:
+          RAILS_ENV: test
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/myapp_test
+        run: bundle exec rspec

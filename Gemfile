@@ -90,3 +90,8 @@ gem "jwt", "~> 3.1"
 gem "redis", "~> 5.4"
 
 gem "connection_pool", "< 3.0"
+
+group :development, :test do
+  gem "rspec-rails", "~> 8.0"
+  gem "factory_bot_rails", "~> 6.5"
+end
