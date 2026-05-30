@@ -58,7 +58,8 @@ jobs:
       R2_PUBLIC_BUCKET: "dummy"
       R2_PUBLIC_SECRET_ACCESS_KEY: "dummy"
       R2_PUBLIC_ACCESS_KEY_ID: "dummy"
-      REDIS_URL: redis://localhost:6379/0
+      REDIS_URL: "redis://localhost:6379/0"
+      MEDIA_JWT_SECRET: "dummy"
 
     services:
       postgres:
