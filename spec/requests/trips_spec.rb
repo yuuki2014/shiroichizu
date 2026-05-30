@@ -66,6 +66,20 @@ RSpec.describe "Trips", type: :request do
         expect(response).to have_http_status(:ok)
       end
     end
+
+    context "地図が存在しない場合" do
+      it "地図一覧にリダイレクトされる" do
+        get trip_path("not-found-public-uid")
+
+        expect(response).to redirect_to(trips_path)
+      end
+
+      it "JSONでも取得できない" do
+        get trip_path("not-found-public-uid", format: :json)
+
+        expect(response).to redirect_to(trips_path)
+      end
+    end
   end
 
   describe "GET /explore/trips" do
@@ -156,6 +170,115 @@ RSpec.describe "Trips", type: :request do
       end
 
       it_behaves_like "全ての公開設定の地図が一覧に表示されない"
+    end
+  end
+
+  describe "GET /trips/:id.json" do
+    shared_examples "地図が公開・限定公開の場合に表示する投稿" do
+      it "未ログインユーザーには公開投稿と地図に合わせる投稿だけをGeoJSONで返す" do
+        get trip_path(trip, format: :json)
+
+        expect(response).to have_http_status(:ok)
+
+        json = response.parsed_body
+        public_uids = json["features"].map { |feature| feature["properties"]["public_uid"] }
+
+        aggregate_failures do
+          expect(public_uids).to include(public_post.public_uid)
+          expect(public_uids).to include(inherit_post.public_uid)
+          expect(public_uids).not_to include(private_post.public_uid)
+        end
+      end
+
+      it "ログイン中の地図作成者には全ての投稿をGeoJSONで返す" do
+        sign_in owner
+
+        get trip_path(trip, format: :json)
+
+        expect(response).to have_http_status(:ok)
+
+        json = response.parsed_body
+        public_uids = json["features"].map { |feature| feature["properties"]["public_uid"] }
+
+        aggregate_failures do
+          expect(public_uids).to include(public_post.public_uid)
+          expect(public_uids).to include(inherit_post.public_uid)
+          expect(public_uids).to include(private_post.public_uid)
+        end
+      end
+
+      it "ログイン中の他人には公開投稿と地図に合わせる投稿だけをGeoJSONで返す" do
+        sign_in other_user
+
+        get trip_path(trip, format: :json)
+
+        expect(response).to have_http_status(:ok)
+
+        json = response.parsed_body
+        public_uids = json["features"].map { |feature| feature["properties"]["public_uid"] }
+
+        aggregate_failures do
+          expect(public_uids).to include(public_post.public_uid)
+          expect(public_uids).to include(inherit_post.public_uid)
+          expect(public_uids).not_to include(private_post.public_uid)
+        end
+      end
+    end
+
+    context "公開地図の場合" do
+      let(:trip) { create(:trip, status: :public, user: owner) }
+      let!(:public_post) { create(:post, visibility: :public, trip: trip, user: owner) }
+      let!(:inherit_post) { create(:post, visibility: :inherit_trip, trip: trip, user: owner) }
+      let!(:private_post) { create(:post, visibility: :private, trip: trip, user: owner) }
+
+      it_behaves_like "地図が公開・限定公開の場合に表示する投稿"
+    end
+
+    context "限定公開地図の場合" do
+      let(:trip) { create(:trip, status: :unlisted, user: owner) }
+      let!(:public_post) { create(:post, visibility: :public, trip: trip, user: owner) }
+      let!(:inherit_post) { create(:post, visibility: :inherit_trip, trip: trip, user: owner) }
+      let!(:private_post) { create(:post, visibility: :private, trip: trip, user: owner) }
+
+      it_behaves_like "地図が公開・限定公開の場合に表示する投稿"
+    end
+
+    context "非公開地図の場合" do
+      let(:trip) { create(:trip, status: :private, user: owner) }
+      let!(:public_post) { create(:post, visibility: :public, trip: trip, user: owner) }
+      let!(:inherit_post) { create(:post, visibility: :inherit_trip, trip: trip, user: owner) }
+      let!(:private_post) { create(:post, visibility: :private, trip: trip, user: owner) }
+
+      it "ログイン中の本人には全ての投稿をGeoJSONで返す" do
+        sign_in owner
+
+        get trip_path(trip, format: :json)
+
+        expect(response).to have_http_status(:ok)
+
+        json = response.parsed_body
+        public_uids = json["features"].map { |feature| feature["properties"]["public_uid"] }
+
+        aggregate_failures do
+          expect(public_uids).to include(public_post.public_uid)
+          expect(public_uids).to include(inherit_post.public_uid)
+          expect(public_uids).to include(private_post.public_uid)
+        end
+      end
+
+      it "ログイン中の他人はJSONを取得できない" do
+        sign_in other_user
+
+        get trip_path(trip, format: :json)
+
+        expect(response).to redirect_to(trips_path)
+      end
+
+      it "未ログインの人はJSONを取得できない" do
+        get trip_path(trip, format: :json)
+
+        expect(response).to redirect_to(trips_path)
+      end
     end
   end
 end
