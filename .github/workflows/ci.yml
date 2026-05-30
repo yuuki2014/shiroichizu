@@ -60,6 +60,7 @@ jobs:
       R2_PUBLIC_ACCESS_KEY_ID: "dummy"
       REDIS_URL: "redis://localhost:6379/0"
       MEDIA_JWT_SECRET: "dummy"
+      STYLE_URL: "dummy"
 
     services:
       postgres:
