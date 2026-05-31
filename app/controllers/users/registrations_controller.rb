@@ -19,15 +19,7 @@ class Users::RegistrationsController < Devise::RegistrationsController
     if current_user&.role == "guest"
       self.resource = current_user
 
-      # フォームの入力値（メアド・パスワード）をセット
-      resource.assign_attributes(sign_up_params)
-
-      # 会員用にデータを変更
-      resource.role = "general"
-      resource.nickname = "ユーザー"
-      resource.email = @email
-
-      if resource.save
+      if resource.promote_to_general(email: @email, password: sign_up_params[:password], password_confirmation: sign_up_params[:password_confirmation])
         # セッション切断を防ぐために再ログイン処理をする
         bypass_sign_in(resource)
 
