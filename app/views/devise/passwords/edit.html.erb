@@ -44,7 +44,8 @@
               autocomplete: "new-password",
               minlength: @minimum_password_length,
               maxlength: 128,
-              placeholder: "••••••••••••••••",
+              placeholder: "••••••••",
+              pattern: "[\\x21-\\x7E]+",
               autofocus: true,
               class: "w-full px-4 py-3 pr-12 rounded-xl border-none shadow-sm text-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-orange-300 outline-none tracking-widest",
               data: { password_target: "input" } %>
@@ -72,7 +73,8 @@
               autocomplete: "new-password",
               minlength: @minimum_password_length,
               maxlength: 128,
-              placeholder: "••••••••••••••••",
+              pattern: "[\\x21-\\x7E]+",
+              placeholder: "••••••••",
               class: "w-full px-4 py-3 pr-12 rounded-xl border-none shadow-sm text-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-orange-300 outline-none tracking-widest",
               data: { password_target: "input" } %>
 

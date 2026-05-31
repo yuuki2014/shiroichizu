@@ -24,6 +24,18 @@ class Footprint < ApplicationRecord
   # バリデーション定義
   validates :trip_id, :latitude, :longitude, :geohash, :recorded_at, presence: true
 
+  validates :latitude,
+    numericality: {
+      greater_than_or_equal_to: -90,
+      less_than_or_equal_to: 90
+    }
+
+  validates :longitude,
+    numericality: {
+      greater_than_or_equal_to: -180,
+      less_than_or_equal_to: 180
+    }
+
   # 初期値定義
   # 記録時刻はアプリ側の時間を入れる
   attribute :recorded_at, :datetime, default: -> { Time.current }

@@ -66,6 +66,18 @@ class Post < ApplicationRecord
   validate :visited_at_cannot_be_in_the_future
   validates :body, length: { maximum: MAX_BODY_LENGTH  }
 
+  validates :latitude,
+    numericality: {
+      greater_than_or_equal_to: -90,
+      less_than_or_equal_to: 90
+    }
+
+  validates :longitude,
+    numericality: {
+      greater_than_or_equal_to: -180,
+      less_than_or_equal_to: 180
+    }
+
   # アソシエーション定義
   belongs_to :user
   belongs_to :trip, optional: true
@@ -92,7 +104,7 @@ class Post < ApplicationRecord
   end
 
   def visible_to?(user)
-    user == self.user || visibility_public? || (visibility_inherit_trip? && (trip.visibility_unlisted? || trip.visibility_public?))
+    user == self.user || visibility_public? || (visibility_inherit_trip? && trip.present? && (trip.visibility_unlisted? || trip.visibility_public?))
   end
 
   private

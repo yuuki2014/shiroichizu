@@ -6,5 +6,7 @@ FactoryBot.define do
     sequence(:body) { |n| "テスト投稿#{n}" }
     latitude { 35.681236 }
     longitude { 139.767125 }
+    visibility { :inherit_trip }
+    visited_at { Time.current }
   end
 end
