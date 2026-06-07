@@ -2,15 +2,25 @@ module ApplicationHelper
   def tab_class(path)
     base = "flex-1 flex flex-col items-center justify-center gap-1 text-gray-400 active:scale-95 transition hover:bg-gray-100 rounded-xl user-select: none"
 
-    is_active = current_page?(path)
+    active_paths =
+      case path
+      when trips_path
+        [ trips_path, posts_path ]
+      when explore_trips_path
+        [ explore_trips_path, explore_posts_path ]
+      when mypage_path
+        [ mypage_path ]
+      when root_path
+        [ root_path ]
+      else
+        [ path ]
+      end
+
+    is_active = active_paths.any? { |active_path| current_page?(active_path) }
 
     # mypageからリダイレクトされて開いているユーザー詳細ページもアクティブに
-    if user_signed_in?
-      if path == mypage_path
-        if controller_name == "users" && action_name == "show"
-          is_active = true
-        end
-      end
+    if user_signed_in? && path == mypage_path
+      is_active ||= controller_name == "users" && action_name == "show"
     end
 
     if is_active
