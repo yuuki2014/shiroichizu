@@ -1,12 +1,12 @@
-<div class="h-full pb-20 bg-gray-100 flex justify-center">
+<div class="min-h-dvh pb-20 bg-gray-100 flex justify-center">
 
   <%# 各カードを包むコンテナ %>
-  <div class="max-w-md w-full flex flex-col gap-4 p-4">
+  <div class="max-w-md w-full flex flex-col gap-4 p-4 mb-11">
 
     <%# 規約同意カード %>
     <div class="bg-white rounded-xl shadow-md p-4 mb-4 flex flex-col items-center gap-4">
-      <div class="w-16 h-16 p-1 bg-orange-400 rounded-full text-center items-center justify-center">
-        <%= lucide_icon('footprints', class: "w-full h-full text-white") %>
+      <div class="size-44 rounded flex items-center justify-center">
+        <%= image_tag "logo-vertical.svg" %>
       </div>
       <div class="font-bold">
         地図作りを始めよう！！
@@ -29,7 +29,7 @@
       <div class="text-sm text-red-300">
         データが消えないように会員登録をしよう！
       </div>
-      <%= link_to new_registration_path(:user), class: "block w-full" do %>
+      <%= link_to new_email_verification_path, class: "block w-full" do %>
         <div class="bg-gradient-to-b from-orange-300 to-orange-500 text-white text-center font-bold text-lg py-4 rounded-2xl shadow-lg hover:opacity-90 transition">
           新規会員登録（無料）
         </div>
@@ -39,8 +39,7 @@
 
     <%# 各種リンクカード %>
     <% account_links = [
-      link_to("・利用規約", terms_path, class: "hover:text-gray-900", data: { turbo_stream: true }),
-      link_to("・プライバシーポリシー", privacy_policy_path, class: "hover:text-gray-900", data: { turbo_stream: true }),
+      link_to("・このサービスについて", about_path, class: "hover:text-gray-900", data: { turbo_stream: true }),
     ] %>
 
     <%= mypage_card(account_links) %>

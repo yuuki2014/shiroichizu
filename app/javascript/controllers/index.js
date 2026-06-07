@@ -13,8 +13,17 @@ application.register("base-map", BaseMapController)
 import BottomSheetController from "./bottom_sheet_controller"
 application.register("bottom-sheet", BottomSheetController)
 
+import ClickableCardController from "./clickable_card_controller"
+application.register("clickable-card", ClickableCardController)
+
+import CookieConsentController from "./cookie_consent_controller"
+application.register("cookie-consent", CookieConsentController)
+
 import CopyController from "./copy_controller"
 application.register("copy", CopyController)
+
+import DestinationSearchController from "./destination_search_controller"
+application.register("destination-search", DestinationSearchController)
 
 import DispatchController from "./dispatch_controller"
 application.register("dispatch", DispatchController)
@@ -34,6 +43,9 @@ application.register("hello", HelloController)
 import HistoryMapController from "./history_map_controller"
 application.register("history-map", HistoryMapController)
 
+import ImageLoaderController from "./image_loader_controller"
+application.register("image-loader", ImageLoaderController)
+
 import ImageViewerController from "./image_viewer_controller"
 application.register("image-viewer", ImageViewerController)
 
@@ -46,8 +58,14 @@ application.register("map", MapController)
 import ModalController from "./modal_controller"
 application.register("modal", ModalController)
 
+import PasswordController from "./password_controller"
+application.register("password", PasswordController)
+
 import PostsController from "./posts_controller"
 application.register("posts", PostsController)
+
+import ScrollResetController from "./scroll_reset_controller"
+application.register("scroll-reset", ScrollResetController)
 
 import ShareButtonController from "./share_button_controller"
 application.register("share-button", ShareButtonController)

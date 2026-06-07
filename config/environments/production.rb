@@ -72,7 +72,7 @@ Rails.application.configure do
   # config.cache_store = :mem_cache_store
 
   # Use a real queuing backend for Active Job (and separate queues per environment).
-  # config.active_job.queue_adapter = :resque
+  config.active_job.queue_adapter = :good_job
   # config.active_job.queue_name_prefix = "myapp_production"
 
   # Disable caching for Action Mailer templates even if Action Controller
@@ -94,10 +94,43 @@ Rails.application.configure do
   config.active_record.dump_schema_after_migration = false
 
   # Enable DNS rebinding protection and other `Host` header attacks.
-  # config.hosts = [
-  #   "example.com",     # Allow requests from example.com
-  #   /.*\.example\.com/ # Allow requests from subdomains like `www.example.com`
-  # ]
+  config.hosts << "shiroichizu.app"
+  config.hosts << "www.shiroichizu.app"
+  config.hosts << "shiroichizu.fly.dev"
   # Skip DNS rebinding protection for the default health check endpoint.
-  # config.host_authorization = { exclude: ->(request) { request.path == "/up" } }
+  config.host_authorization = { exclude: ->(request) { request.path == "/up" } }
+
+  host = ENV.fetch("APP_HOST", "shiroichizu.app")
+  config.action_mailer.default_url_options = { host: host, protocol: "https" }
+
+  # メールの配信方法
+  config.action_mailer.delivery_method = :resend
+  config.action_mailer.perform_deliveries = true
+
+  # good_jobの設定
+  config.good_job = {
+    # ジョブが終了した後もジョブ記録を保持
+    preserve_job_records: true,
+    # エラーハンドリング
+    on_thread_error: ->(exception) { Rails.error.report(exception) },
+    # Webサーバプロセス内でジョブを実行
+    execution_mode: :async,
+    # すべてのキューを処理
+    queues: "*",
+    # スレッド数の制約を設定
+    max_threads: 3,
+    # DBへのポーリングの間隔（秒数）を設定
+    poll_interval: 5,
+    dashboard_default_locale: :ja
+  }
+
+  # Rack::Attack用にキャッシュストアを有効
+  config.action_controller.perform_caching = true
+  config.cache_store = :redis_cache_store, {
+    url: ENV.fetch("REDIS_URL"),
+    namespace: "shiroichizu:cache",
+    expires_in: 1.day
+  }
+
+  config.active_storage.track_variants = false
 end

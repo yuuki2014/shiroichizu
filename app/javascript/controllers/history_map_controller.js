@@ -1,7 +1,7 @@
 import BaseMapController from "./base_map_controller.js"
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
-import * as turf from "@turf/turf"
+import ngeohash from 'ngeohash'
 
 // Connects to data-controller="history-map"
 export default class extends BaseMapController {
@@ -10,10 +10,9 @@ export default class extends BaseMapController {
                   }
 
   async connect(_element) {
-    // base mapのconnectを実行
-    super.connect();
+    super.connect(); // base mapのconnectを実行
 
-    this.cumulativeFeature = this.generateFeatureFromGeohashes(this.visitedGeohashesValue, this.cumulativeGeohashes);
+    await this.initVisitedGeohashes();
 
     // 中央位置設定
     if(this.longitudeValue && this.latitudeValue){
@@ -27,70 +26,66 @@ export default class extends BaseMapController {
 
     if (!this.map) return;
 
+    this.fitToVisitedArea();
+
     // アトリビューション表記
     this.map.addControl(new maplibregl.AttributionControl({ compact: true }), "bottom-right");
 
     // 非表示にする地図上の情報
     const toHide = [
-      "Restaurant and shop",
-      "Store and mall",
-      "Pub",
-      "Hotel",
-      "Generic POI",
-      "Generic POI 11",
-      "Major POI",
-      "Doctor",
-      "Parking",
-      "Government",
-      "Golf pitch",
     ];
 
     // 地図の読み込みが終わった後に実行
     this.map.on('load', () => {
       // 霧を初期化
-      this.fogInit()
+      this.fogInit();
+      this.setupCustomFogLayerEvents();
 
-      toHide.forEach(id => {
-        if (this.map.getLayer(id)) {
-          this.map.setLayoutProperty(id, "visibility", "none");
-        }
-      });
-
-      this.executeFogClearing();
-
-      this.addMarkers();
+      this.updateCustomFogLayer();
 
       this.mapInitEnd = true;
       this.maybeClearOverlay();
     })
   }
 
-  executeFogClearing(){
-    if(!this.cumulativeFeature){
-      console.log("geohashがないので何も実行しません")
-      return;
-    }
-
-    // 世界全体からvisitedを引いて霧を作る
-    const fogPolygon = turf.difference(turf.featureCollection([ this.worldFeature, this.cumulativeFeature ]));
-
-    if (fogPolygon) {
-      this.updateFog(fogPolygon);
+  async initVisitedGeohashes(){
+    this.visitedGeohashes = new Set();
+    console.log(window.location.pathname.slice(1))
+    if (String(window.location.pathname.slice(1)) === "my_map"){
+      await this.setCumulativeGeohashesAndFeature(this.visitedGeohashes);
     } else {
-      console.log("fogPolygonが見つかりません");
+      this.generateFeatureFromGeohashes(this.visitedGeohashesValue, this.visitedGeohashes);
     }
   }
 
+  getFogConfig() {
+    return {
+      opacity: 0.6,
+      color: [26/255, 38/255, 52/255]
+    };
+  }
+
   clearMapOverlay(){
+    if (!this.hasMapOverlayTarget) return;
+
     const el = this.mapOverlayTarget
 
-    if (!el) return;
+    const removeOverlay = () => {
+      if (el.isConnected) el.remove();
+    };
 
-    el.classList.add("-translate-y-full")
+    const fallbackTimer = setTimeout(removeOverlay, 5000);
 
     el.addEventListener("transitionend", () => {
-      el.remove();
+      clearTimeout(fallbackTimer);
+      removeOverlay();
     }, { once: true })
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        el.classList.add("-translate-y-full");
+      });
+    });
   }
 
   maybeClearOverlay(){
@@ -107,26 +102,47 @@ export default class extends BaseMapController {
     this.maybeClearOverlay();
   }
 
-  // 霧の初期化のhistorymapバージョン
-  fogInit(){
-    if (!this.map.getSource('fog')) {
-      this.map.addSource('fog', {
-        type: 'geojson',
-        data: this.worldFeature
-      });
-    }
+  setupCustomFogLayerEvents() {
+    // moveendで実行。zoomendも含まれている
+    const updateEvents = ["moveend"];
 
-    if (!this.map.getLayer('fog-layer')) {
-      this.map.addLayer({
-        id: 'fog-layer',
-        type: "fill",
-        source: 'fog',
-        paint: {
-          "fill-color": "#ffffff",
-          "fill-opacity": 0.3,
-          'fill-antialias': false,
+    updateEvents.forEach(eventType => {
+      this.map.on(eventType, () => {
+        // カスタムレイヤーが存在し、かつ表示中であれば更新する
+        if (this.fogCustomLayer && this.visitedGeohashes?.size > 0) {
+          this.updateCustomFogLayer();
         }
       });
-    }
+    });
+  }
+
+  // 地図の全体が映るようにカメラを設定
+  fitToVisitedArea() {
+    if (!this.visitedGeohashes || this.visitedGeohashes.size === 0) return;
+
+    let minLat = Infinity, minLng = Infinity;
+    let maxLat = -Infinity, maxLng = -Infinity;
+
+    // すべてのGeohashを走査して外郭を探す
+    this.visitedGeohashes.forEach(hash => {
+      const bbox = ngeohash.decode_bbox(hash); // [s, w, n, e]
+
+      if (bbox[0] < minLat) minLat = bbox[0];
+      if (bbox[1] < minLng) minLng = bbox[1];
+      if (bbox[2] > maxLat) maxLat = bbox[2];
+      if (bbox[3] > maxLng) maxLng = bbox[3];
+    });
+
+    // MapLibreのfitBoundsに渡す
+    this.map.fitBounds(
+      [[minLng, minLat], [maxLng, maxLat]],
+      {
+        padding: 50,
+        duration: 0,
+        bearing: 0,
+        pitch: 0,
+        essential: true
+      }
+    );
   }
 }

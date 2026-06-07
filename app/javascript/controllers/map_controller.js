@@ -3,8 +3,8 @@ import { STATUS } from "../constants/status"
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import ngeohash from 'ngeohash';
+import { get } from "@rails/request.js"
 import { getDistance } from 'geolib'
-import * as turf from "@turf/turf"
 
 // 定数定義
 const GEOHASH_PRECISION     = 9;     // 保存するgeohash精度
@@ -13,13 +13,17 @@ const FORCE_RECORD_MS       = 30000; // 30000ミリ秒 (記録間隔の最大値
 const FLUSH_INTERVAL_MS     = 60000; // 60000ミリ秒 (送信間隔)
 const MAP_OVERLAY_TIMEOUT   = 5000;  // マップオーバーレイを消すまでタイムアウト時間
 const MAP_OVERLAY_DISTANCE  = 100;   // マップオーバーレイを消すまで距離
-const GEOLOCATE_MAXIMUM_AGE = 3000;  // 位置情報のキャッシュ許容時間
+const GEOLOCATE_MAXIMUM_AGE = 86400000;  // 位置情報のキャッシュ許容時間
+const GEOLOCATE_TIMEOUT     = 10000;
 const PERMISSION_DENIED     = 1;     // 位置情報不許可時のerror値
-const DEBUG_MODE = false;
+const INITIAL_ZOOM_LEVEL = 17;
+const MAX_POSITION_AGE_MS = 15000; // 位置情報を反映させるのに許容する時間の差
+const MAX_EXPLORATION_ACCURACY = 300; // 霧解放時に許容する現在地の正確さ
+const RESUME_IGNORE_MS = 5000; // ブラウザ復帰時に位置を反映させない時間
 
 // Connects to data-controller="map"
 export default class extends BaseMapController {
-  async connect() {
+  connect() {
     if (document.documentElement.hasAttribute("data-turbo-preview")) return; // プレビューの時は戻る
 
     console.log("-----初期化実行-----")
@@ -31,15 +35,7 @@ export default class extends BaseMapController {
     this.setupEventListeners(); // イベントリスナーを登録
     if (this.ac.signal.aborted || !this.element.isConnected) return; // 途中で遷移してたらreturn
 
-    this.center = [ 139.745, 35.658 ]; // 仮の中央として東京駅
-    await this.initializeMap(this.center) // 地図初期化
-    if (!this.map) return;
-
-    this.setupMapControls(); // 地図のUI設定
-    this.setupPulseMarker(); // 現在地のパルス設定
-    this.addMarkers(); // マーカーをセット
-    this.setupMapLoadEvents(); // 地図読み込み後の処理
-    console.log("-----初期化終了-----")
+    this.setupMapProcess(); // マップ関連の処理を実行
   }
 
   // --- セットアップ関連メソッド ---
@@ -50,7 +46,6 @@ export default class extends BaseMapController {
     this.cumulativeMode = false;
     this.cumulativeModeStatus = "notReady";
     this.forceStopCumulative = false;
-    this.setCumulativeGeohashesAndFeature(this.cumulativeGeohashes);
 
     // 地図の設定
     this.status = STATUS.STOPPED; // 地図のステータスを初期化
@@ -63,6 +58,10 @@ export default class extends BaseMapController {
     this.lastSentGeohash = ""; // 最後に保存したgeohashを覚えておく変数
     this.lastSavedCoords = null; // 最後に保存した座標
     this.footprintBuffer = []; // データを溜めておくための配列
+    this.ignoreExplorationUntil = 0; // 非表示から復帰した時間を覚えておく変数
+    this.pendingExplorationData = null; // 非表示から復帰した時のデータを覚えておく変数
+    this.resumeIgnoreTimer = null; // 非表示から復帰した時のデータを保存するまでのタイマー
+    this.isFlushing = false; // flushBuffer重複防止フラグ
 
     // geohash、霧関係の設定
     this.visitedFeature = null; // 開放済みの場所をFeatureオブジェクトで管理
@@ -86,25 +85,44 @@ export default class extends BaseMapController {
     document.addEventListener('visibilitychange', this.onVisibilityChange, { signal: this.ac.signal });
   }
 
+  async setupMapProcess(){
+    this.center = [ 139.745, 35.658 ]; // 仮の中央として東京駅
+    await this.initializeMap(this.center) // 地図初期化
+    if (!this.map || this.ac.signal.aborted || !this.element.isConnected) return;
+
+    this.setupMapControls(); // 地図のUI設定
+    this.setupPulseMarker(); // 現在地のパルス設定
+    this.setupMapLoadEvents(); // 地図読み込み後の処理
+    console.log("-----初期化終了-----")
+  }
+
   // 地図のUI設定
   setupMapControls(){
     // アトリビューション表記
-    this.map.addControl(new maplibregl.AttributionControl({ compact: true }), "top-right");
+    this.map.addControl(new maplibregl.AttributionControl({ compact: true, customAttribution: '© <a href="https://www.geoapify.com/" target="_blank" rel="noopener noreferrer">Geoapify</a>' }), "bottom-right");
 
     // 現在地追跡機能をセット
     this.geolocate = new maplibregl.GeolocateControl({
       positionOptions: {
         enableHighAccuracy: true, // 高精度モードを有効
-        maximumAge: GEOLOCATE_MAXIMUM_AGE // 位置情報のキャッシュ許容時間
+        maximumAge: GEOLOCATE_MAXIMUM_AGE,// 位置情報のキャッシュ許容時間
+        timeout: GEOLOCATE_TIMEOUT
       },
       trackUserLocation: true, // 移動に合わせてドットが動く
-      showUserHeading: true, // スマホの向いている方角を表示
       showAccuracyCircle: false, // GPSの誤差の範囲を表示
       fitBoundsOptions: { // ズームカメラの設定
       }
     });
 
+    // ナビゲーションコントロールボタンを設定
+    const navControl = new maplibregl.NavigationControl({
+      showCompass: true, // コンパスを表示
+      showZoom: false,    // ズームボタンを表示
+      visualizePitch: true // マップの傾きに合わせてコンパスを傾ける
+    });
+
     this.map.addControl(this.geolocate); // 地図にgeolocateボタンを追加。右上
+    this.map.addControl(navControl); // 地図にナビゲーションボタンを追加
     this.overrideGeolocateTrigger(); // geolocateボタンのtriggerメソッドを上書き
 
     this.geolocate.on('geolocate', this.handleGeolocate); // geolocate発火時に起動する関数の設定
@@ -120,6 +138,24 @@ export default class extends BaseMapController {
         this.pulseMarker.getElement().style.display = "none";
       }
     });
+  }
+
+  // 現在地追従をオフ
+  disableGeolocateTracking() {
+    if (this.geolocate) {
+      // MapLibre GeolocateControl の private API をいじっている
+      // バージョンアップ時に _watchState,_geolocateButton の仕様変更で壊れる可能性があるため要確認
+      if (this.geolocate._watchState === 'ACTIVE_LOCK') { // ACTIVE_LOCK,追従中の時に
+        this.geolocate._watchState = 'BACKGROUND'; // 強制的にBACKGROUNDに書き換える
+
+        // ボタンの見た目も状態に合わせてオフに
+        const btn = this.geolocate._geolocateButton;
+        if (btn) {
+          btn.classList.remove('maplibregl-ctrl-geolocate-active');
+          btn.classList.add('maplibregl-ctrl-geolocate-background');
+        }
+      }
+    }
   }
 
   // geolocateボタンのtriggerメソッドを上書き
@@ -146,7 +182,7 @@ export default class extends BaseMapController {
       const currentZoom = this.map.getZoom(); // 現在のズーム率を取得
 
       // maxとminのズームを現在のズームに固定
-      this.geolocate.options.fitBoundsOptions.maxZoom = currentZoom;
+      // this.geolocate.options.fitBoundsOptions.maxZoom = currentZoom;
       this.geolocate.options.fitBoundsOptions.minZoom = currentZoom;
     });
   }
@@ -168,22 +204,12 @@ export default class extends BaseMapController {
   setupMapLoadEvents() {
     // 非表示にする地図上の情報
     const toHide = [
-      "Restaurant and shop",
-      "Store and mall",
-      "Pub",
-      "Hotel",
-      "Generic POI",
-      "Generic POI 11",
-      "Major POI",
-      "Doctor",
-      "Parking",
-      "Government",
-      "Golf pitch",
     ];
 
     // 地図の読み込みが終わった後に実行
     this.map.on('load', () => {
       this.fogInit(); // 霧を初期化
+      // this.setupCustomFogLayerEvents()
 
       // toHide配列の中身のidの要素を透過
       toHide.forEach(id => {
@@ -192,20 +218,7 @@ export default class extends BaseMapController {
         }
       });
 
-      this.checkLocationPermissions(); // 規約と位置情報をチェックして現在地の表示と霧を晴らす
-
-      // デバッグ用：クリックで霧を晴らす
-      if(DEBUG_MODE){
-        this.map.on('click', (e) => {
-          const { lng, lat } = e.lngLat; // クリックした箇所のlng,latを取得
-          const clickHash = ngeohash.encode(lat, lng, 9); // クリックした場所をGeohash（精度9）に変換
-
-          console.log(`クリック地点: ${lat}, ${lng} -> ${clickHash}`);
-
-          // その場所を中心に霧を晴らす処理を実行
-          this.debugClearFogAt(clickHash, lng, lat);
-        });
-      }
+      this.checkLocationPermissions(); // 規約と位置情報をチェックして現在地追従オン
     });
 
     // アイコンが足りない時のダミー追加
@@ -217,18 +230,56 @@ export default class extends BaseMapController {
       const empty = new Uint8Array([0, 0, 0, 0]);
       this.map.addImage(id, { width: 1, height: 1, data: empty });
     });
+
+    window.dispatchEvent(new CustomEvent("map:ready")); // map準備完了のイベントを発火
+  }
+
+  jumpToCurrentLocation() {
+    if (this.currentLat != null && this.currentLng != null) {
+
+      // 現在地に初期ズームで移動
+      this.map.easeTo({
+        center: [this.currentLng, this.currentLat],
+        zoom: INITIAL_ZOOM_LEVEL,
+        duration: 1000,
+        essential: true // 強制的にアニメーション
+      });
+
+      // 移動が終わったら一回だけ起動
+      this.map.once('moveend', () => {
+        if (this.geolocate) {
+          // MapLibre GeolocateControl の private API をいじっている
+          // バージョンアップ時に _watchState,_geolocateButton の仕様変更で壊れる可能性があるため要確認
+          if (this.geolocate._watchState === 'BACKGROUND') {
+            this.geolocate._watchState = 'ACTIVE_LOCK'; // geolocateの状態を追従モードへ
+            const btn = this.geolocate._geolocateButton;
+
+            if (btn) {
+              btn.classList.remove('maplibregl-ctrl-geolocate-background');
+              btn.classList.add('maplibregl-ctrl-geolocate-active');
+            }
+          } else if(this.geolocate._watchState === 'OFF') {
+            this.geolocateTrigger();
+          }
+        }
+      });
+    } else {
+      console.warn("現在地がまだ取得できていません");
+    }
   }
 
   // --- ロジック関連メソッド ---
 
   // geolocate発火時のコールバック関数
   handleGeolocate = (data) => {
+    console.log("handleGeolacate起動")
     if (!this.map || !this.element.isConnected) return; // ガード
 
-    // センターの設定
-    if(!this.mapInitEnd) {
-      this.map.setCenter([data.coords.longitude, data.coords.latitude])
-    }
+    this.updateCurrentPositionState(data);
+    this.applyGeolocateForExploration(data);
+  }
+
+  updateCurrentPositionState(data){
     // 各種データの取得
     const lng = data.coords.longitude; // 経度
     const lat = data.coords.latitude;  // 緯度
@@ -247,13 +298,29 @@ export default class extends BaseMapController {
 
     this.pulseMarker.setLngLat([this.currentLng, this.currentLat]); // 自作パルスの現在地を更新
 
-    // 霧の更新
-    if (this.status !== STATUS.PAUSED) {
-      this.executeFogClearing()
+    this.mapInitEnd = true; // 地図初期化完了
+    this.maybeClearOverlay(); // オーバーレイ要素をクリア
+    this.dispatchLocationUpdate(); // location:updateイベントを発火
+  }
+
+  applyGeolocateForExploration(data){
+    // 一時停止中なら、保存も霧解放もしない
+    if (this.status === STATUS.PAUSED) return;
+
+    // 復帰直後や精度不良なら、保存も霧解放もしない
+    if (!this.canUseForExploration(data)) {
+      console.log("探索用対象外なので霧も保存も反映しません");
+      return;
     }
 
-    this.mapInitEnd = true;
-    this.maybeClearOverlay();
+    // タイマーが存在する時はクリア
+    if (this.resumeIgnoreTimer) {
+      clearTimeout(this.resumeIgnoreTimer);
+      this.resumeIgnoreTimer = null;
+    }
+
+    // 霧の更新
+    this.updateRealtimeFogClearing();
 
     // status が RECORDING になっている場合に保存判定
     if(this.status === STATUS.RECORDING) {
@@ -261,7 +328,33 @@ export default class extends BaseMapController {
     }
   }
 
-  // 位置情報と規約の状態をチェックして地図の表示と霧を晴らす
+  // Footprintを判定
+  canUseForExploration(data) {
+    // 非表示から復帰直後は安定しないため反映させない
+    if (Date.now() < this.ignoreExplorationUntil) {
+      console.log("復帰直後なので探索反映をスキップ");
+      this.pendingExplorationData = data;
+      return false;
+    }
+
+    // 保存・霧解放には古いキャッシュ位置を使わない
+    const ageMs = Date.now() - data.timestamp;
+    if (ageMs > MAX_POSITION_AGE_MS) {
+      console.warn("古い位置情報なので探索反映をスキップ", ageMs);
+      return false;
+    }
+
+    // 精度が悪い位置情報は使わない
+    const accuracy = data.coords.accuracy;
+    if (accuracy != null && accuracy > MAX_EXPLORATION_ACCURACY) {
+      console.warn("精度が悪い位置情報なので探索反映をスキップ", accuracy);
+      return false;
+    }
+
+    return true;
+  }
+
+  // 位置情報と規約の状態をチェックして地図表示とオーバーレイを晴らす
   checkLocationPermissions = () => {
 
     this.hasAccepted = this.getCookie("terms_accepted"); // 規約に同意済みか最新のクッキーを取得
@@ -281,8 +374,13 @@ export default class extends BaseMapController {
 
           if (this.map && this.geolocate) {
             this.geolocate.trigger(); // 地図上の現在地ボタンを起動
-            this.mapInitEnd = true;   // 地図の設定完了フラグをtrueに
-            this.maybeClearOverlay(); // 霧を晴らす
+
+            setTimeout(() => {
+              if (!this.mapInitEnd) {
+                this.mapInitEnd = true;
+                this.maybeClearOverlay();
+              }
+            }, GEOLOCATE_TIMEOUT);
           }
 
         } else if(result.state === 'prompt') { // 確認のダイアログが表示された時
@@ -296,7 +394,7 @@ export default class extends BaseMapController {
             if (result.state === 'granted') { // 位置情報を許可するとき
               if (this.map && this.geolocate) {
                 this.mapInitEnd = true;   // 地図の設定完了フラグをtrueに
-                this.maybeClearOverlay(); // 霧を晴らす
+                this.maybeClearOverlay(); // オーバーレイ要素を晴らす
               }
             } else if (result.state === 'denied') { // 位置情報を許可しないが押された時
               this.showLocationDeniedModal(); // 位置情報を許可するよう促すモーダルを表示
@@ -374,7 +472,29 @@ export default class extends BaseMapController {
   onVisibilityChange = () => {
     if(document.visibilityState === 'hidden' && this.status === STATUS.RECORDING){
       this.flushBuffer();
-      this.postFootprint();
+      // this.postFootprint();
+    }
+
+    // ページが表示中に戻ったときに
+    if (document.visibilityState === 'visible') {
+      this.ignoreExplorationUntil = Date.now() + RESUME_IGNORE_MS;
+
+      // タイマーが存在する時はクリア
+      if (this.resumeIgnoreTimer) {
+        clearTimeout(this.resumeIgnoreTimer);
+      }
+
+      // 復帰時のデータを保存するまでのタイマー
+      this.resumeIgnoreTimer = setTimeout(() => {
+        this.resumeIgnoreTimer = null;
+
+        if (!this.pendingExplorationData) return;
+
+        const data = this.pendingExplorationData;
+        this.pendingExplorationData = null;
+
+        this.applyGeolocateForExploration(data);
+      }, RESUME_IGNORE_MS + 100); // 少しだけ時間をずらす
     }
   }
 
@@ -477,6 +597,17 @@ export default class extends BaseMapController {
       this.geolocate = null;
     }
 
+    if (this.map) {
+      this.map.off("error", this.handleMapError);
+      this.map.off("webglcontextrestored", this.handleWebGLContextRestored);
+    }
+
+    if (this.resumeIgnoreTimer) {
+      clearTimeout(this.resumeIgnoreTimer);
+      this.resumeIgnoreTimer = null;
+    }
+    this.pendingExplorationData = null;
+
     this.uiOutlet.cumulativeModeOff();
     // 自作マーカーを削除
     if (this.pulseMarker) {
@@ -487,11 +618,8 @@ export default class extends BaseMapController {
     if(this.flushTimer) {
       clearInterval(this.flushTimer);
       this.flushTimer = null;
-      this.flushBuffer();
     }
-    if(this.status === STATUS.RECORDING){
-      this.postFootprint();
-    }
+    this.flushBuffer();
     if(this.overlayTimer){
       clearTimeout(this.overlayTimer);
       this.overlayTimer = null;
@@ -504,6 +632,12 @@ export default class extends BaseMapController {
     }
     this.mapInitEnd = false;
     this.ac?.abort()
+
+    if (this.map) {
+      this.map.remove(); // 地図機能の停止、削除
+      this.map = null; // 参照も切る
+      console.log("map 消去:", this.map)
+    }
   }
 
   // 要素削除時に起動
@@ -537,7 +671,7 @@ export default class extends BaseMapController {
     this.tripId = id;
     if(oldVisitedGeohashes){
       this.visitedGeohashes.clear();
-      this.visitedFeature = this.generateFeatureFromGeohashes(oldVisitedGeohashes, this.visitedGeohashes);
+      this.generateFeatureFromGeohashes(oldVisitedGeohashes, this.visitedGeohashes);
     }
   }
 
@@ -547,7 +681,9 @@ export default class extends BaseMapController {
   }
 
   // 単発のfootprint保存
+  // 注意: 今は基本的には使わない
   async postFootprint() {
+    if (!this.tripId || !this.currentLat || !this.currentLng || !this.currentRecordTime) return;
     console.log("postFootprint起動")
     const csrfToken = document.querySelector('meta[name="csrf-token"]').content
 
@@ -581,6 +717,18 @@ export default class extends BaseMapController {
     console.log("postFootprint:位置情報の保存に成功しました");
   }
 
+  // 開始時の現在地を保存
+  recordStartFootprint() {
+    if (!this.tripId || !this.currentLat || !this.currentLng || !this.currentRecordTime || !this.currentGeohash) {
+      console.warn("現在地が未取得なので開始地点を保存しません");
+      return;
+    }
+
+    const now = Date.now();
+    this.addFootprintToBuffer(now, this.currentGeohash);
+    this.flushBuffer();
+  }
+
   // 溜めたバッファを送信するためのフラッシュタイマー
   setFlushTimer(){
     console.log("バッファ送信用タイマーをセット")
@@ -591,16 +739,18 @@ export default class extends BaseMapController {
 
   // 溜めたバッファを一気にポスト
   async flushBuffer(){
-    if(!this.footprintBuffer?.length) return;
-    console.log("現在地を送信");
+    if(!this.footprintBuffer?.length || this.isFlushing) return;
 
-    const csrfToken = document.querySelector('meta[name="csrf-token"]').content
+    this.isFlushing = true; // バッファ送信中フラグをture
 
-    // データ送信用の浅いコピーを作成
-    const dataToSend = [...this.footprintBuffer];
+    const dataToSend = [...this.footprintBuffer]; // データ送信用の浅いコピーを作成
+    this.footprintBuffer = []; // バッファをクリアしておく
 
     try {
       console.log(`${dataToSend.length}件のデータを送信中...`);
+
+      const csrfToken = document.querySelector('meta[name="csrf-token"]').content
+
       const response = await fetch(`/api/v1/trips/${this.tripId}/footprints/bulk_create`, {
         method: "POST",
         headers: {
@@ -613,23 +763,26 @@ export default class extends BaseMapController {
       })
 
       const result = await response.json()
-      console.log(result)
 
-      // 保存失敗時はエラー
-      if(!response.ok) throw new Error("footprints一括送信失敗");
+      if(!response.ok) throw new Error("footprints一括送信失敗"); // 保存失敗時はエラー
 
       // 保存成功次はバッファをクリア
       this.footprintBuffer = this.footprintBuffer.filter(item => !dataToSend.includes(item));
       console.log("送信成功。現在のバッファ:", this.footprintBuffer);
     } catch(error) {
       console.warn("送信失敗。データを保持して次回リトライします", error);
+
+      this.footprintBuffer = [...dataToSend, ...this.footprintBuffer]; // 失敗したら送れなかった分を先頭に戻す
+    } finally {
+      this.isFlushing = false; // 送信終了後はフラグをfalseに
     }
   }
 
   clearFlushTimer(){
     if(this.flushTimer) {
-      console.log("flushTimerを停止")
       clearInterval(this.flushTimer);
+      this.flushTimer = null;
+      console.log("flushTimerを停止")
     }
   }
 
@@ -642,8 +795,8 @@ export default class extends BaseMapController {
   resetFog() {
     this.visitedFeature = null;
     this.visitedGeohashes.clear();
-    console.log(this.visitedGeohashes)
-    this.executeFogClearing(true);
+
+    this.updateRealtimeFogClearing(true)
 
     Object.values(this.markers).forEach(marker => {
       marker.remove();
@@ -654,66 +807,6 @@ export default class extends BaseMapController {
   resetFogData() {
     this.visitedFeature = null;
     this.visitedGeohashes.clear();
-  }
-
-  executeFogClearing(force = false){
-    // console.log("execute実行")
-    const newGeohashes = this.addGeohashesAndGetNew(this.currentGeohash, this.visitedGeohashes);
-
-    if(!force && newGeohashes.length === 0){
-      console.log("新たに訪れた場所がないので何も実行しません")
-      return;
-    }
-
-    // 今回追加するポリゴンを全て配列にする
-    const polygonsToMerge = newGeohashes.map(hash => this.createPolygonFromGeohash(hash));
-
-    // 過去のvisitedFeatureがあれば、それも配列に加える
-    if (this.visitedFeature) {
-      polygonsToMerge.push(this.visitedFeature);
-    }
-
-    if (polygonsToMerge.length > 1) {
-      // 配列をFeatureCollectionに変換してから、unionに渡す
-      const featureCollection = turf.featureCollection(polygonsToMerge);
-      this.visitedFeature = turf.union(featureCollection);
-    } else {
-      this.visitedFeature = polygonsToMerge[0];
-    }
-
-    let visitedUnion = turf.clone(this.visitedFeature);
-
-    if (this.cumulativeMode && this.cumulativeFeature) {
-      const featureCollection = turf.featureCollection([visitedUnion, this.cumulativeFeature].filter(Boolean));
-      visitedUnion = turf.union(featureCollection);
-    }
-
-    // 世界全体からvisitedを引いて霧を作る
-    const fogPolygon = turf.difference(turf.featureCollection([this.worldFeature, visitedUnion]));
-
-    if (fogPolygon) {
-      this.updateFog(fogPolygon);
-    } else {
-      console.log("fogPolygonが見つかりません");
-    }
-
-    if(this.status === STATUS.STOPPED){
-      this.resetFogData(); // 霧描画後に、保持する霧データをリセット
-    }
-  }
-
-  // 指定されたGeohashの周辺を晴らす（デバッグ・テスト用）
-  debugClearFogAt(targetGeohash, lng, lat) {
-    this.currentGeohash = targetGeohash;
-    this.currentLng = lng;
-    this.currentLat = lat;
-    this.currentRecordTime = new Date().toISOString();
-
-    this.executeFogClearing();
-
-    if(this.status === STATUS.RECORDING){
-      this.postFootprint();
-    }
   }
 
   // 地図表示前にマップを覆っているオーバーレイを消去
@@ -780,32 +873,12 @@ export default class extends BaseMapController {
     this.maybeClearOverlay();
   }
 
-  // 累計地図セット
-  setCumulativeGeohashesAndFeature(cumulativeGeohashes){
-    if(this.cumulativeModeStatus === "loading" || this.cumulativeModeStatus === "isReady") return;
-    this.cumulativeModeStatus = "loading"
+  // 今回歩いた分を、ローカルの累計地図データに直接マージする
+  mergeVisitedToCumulative() {
+    if (!this.visitedFeature || !this.cumulativeGeohashes) return;
 
-    return fetch("/api/v1/my_map", { signal: this.ac.signal })
-      .then(res => {
-        if(!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json();
-      })
-      .then((data) => {
-        if (this.ac.signal.aborted || !this.element.isConnected) return;
-
-        this.cumulativeFeature = this.generateFeatureFromGeohashes(data.geohashes, cumulativeGeohashes);
-
-        this.cumulativeModeStatus = "isReady"
-      })
-      .catch((e) => {
-        this.cumulativeModeStatus = "notReady"
-        this.uiOutlet.disableCumulative();
-        if (e.name == "AbortError") {
-          console.debug("ページ遷移によるエラー", e);
-          return;
-        }
-        console.error(e);
-      });
+    // 今回のGeohashを累計Geohashに追加
+    this.visitedGeohashes.forEach(hash => this.cumulativeGeohashes.add(hash));
   }
 
   async cumulativeModeOn(){
@@ -821,11 +894,11 @@ export default class extends BaseMapController {
       }
 
       this.cumulativeMode = true;
-      this.executeFogClearing(true);
+      this.updateRealtimeFogClearing(true)
 
     } else if (this.cumulativeModeStatus === "isReady"){
       this.cumulativeMode = true;
-      this.executeFogClearing(true);
+      this.updateRealtimeFogClearing(true)
     }
   }
 
@@ -836,10 +909,69 @@ export default class extends BaseMapController {
 
     this.forceStopCumulative = true;
     this.cumulativeMode = false;
-    this.executeFogClearing(true);
+
+    this.updateRealtimeFogClearing(true)
   }
 
   geolocateTrigger(){
     this.geolocate.trigger();
+  }
+
+  fogOff(){
+    this.setFogOpacity(0.0);
+  }
+
+  fogOn(){
+    this.setFogOpacity(0.9);
+  }
+
+  getCurrentPosition(){
+    return { lng: this.currentLng, lat: this.currentLat }
+  }
+
+  getCurrentLat() {
+    return this.currentLat
+  }
+
+  getCurrentLng() {
+    return this.currentLng
+  }
+
+  getMap() {
+    return this.map
+  }
+
+  dispatchLocationUpdate(){
+    window.dispatchEvent(new CustomEvent("location:update", {
+    }))
+  }
+
+  updateRealtimeFogClearing(force = false) {
+    const newGeohashes = this.addGeohashesAndGetNew(this.currentGeohash, this.visitedGeohashes)
+
+    if (!force && newGeohashes.length === 0) {
+      console.log("新たに訪れた場所がないのでWebGL霧は更新しません")
+      return
+    }
+
+    this.updateCustomFogLayer()
+
+    if(this.status === STATUS.STOPPED){
+      this.resetFogData()
+    }
+  }
+
+  setupCustomFogLayerEvents() {
+    // moveendとzoomendの両方で実行
+    const updateEvents = ["moveend", "zoomend"];
+
+    updateEvents.forEach(eventType => {
+      this.map.on(eventType, () => {
+        // カスタムレイヤーが存在し、かつ表示中であれば更新する
+        if (this.fogCustomLayer) {
+          this.updateRealtimeFogClearing(true);
+        }
+      });
+    });
   }
 }

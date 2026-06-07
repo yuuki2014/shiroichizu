@@ -1,16 +1,16 @@
 class ApplicationController < ActionController::Base
   # Only allow modern browsers supporting webp images, web push, badges, import maps, CSS nesting, and CSS :has.
   allow_browser versions: :modern
-  before_action :refresh_session_expiration, :set_back_url
+  before_action :redirect_old_render_domain, if: -> { request.host == ENV.fetch("OLD_HOST") }
+  before_action :set_initial_cookies, if: -> { user_signed_in? }
+  before_action :set_back_url
+  before_action :set_locale
 
   private
 
-  def refresh_session_expiration
-    if user_signed_in?
-      current_user
-      cookies.permanent[:tutorials_end] = "true"
-      cookies.permanent[:terms_accepted] = "true"
-    end
+  def set_initial_cookies
+    cookies.permanent[:tutorials_end] = "true"
+    cookies.permanent[:terms_accepted] = "true"
   end
 
   def set_back_url
@@ -46,5 +46,22 @@ class ApplicationController < ActionController::Base
         end
       end
     end
+  end
+
+  def redirect_old_render_domain
+    old_host = ENV.fetch("OLD_HOST")
+    new_host = ENV.fetch("APP_HOST")
+
+    if request.host == old_host
+      redirect_to "https://#{new_host}#{request.fullpath}", allow_other_host: true, status: :moved_permanently
+    end
+  end
+
+  def custom_verifier
+    ActiveSupport::MessageVerifier.new(Rails.application.secret_key_base, url_safe: true)
+  end
+
+  def set_locale
+    I18n.locale = http_accept_language.compatible_language_from(I18n.available_locales) || I18n.default_locale
   end
 end

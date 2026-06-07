@@ -34,6 +34,13 @@
           <% end %>
         <% end %>
 
+        <%# 現在地ボタン %>
+        <%= tag.button type: "button",
+          data: { action: "click->ui#jumpToCurrentLocation" },
+          class: "btn btn-primary bg-yellow-400/80 text-black p-3 rounded-full shadow-lg hover:bg-yellow-500/80 active:scale-95 transition" do %>
+          <%= lucide_icon('locate') %>
+        <% end %>
+
         <%# 累計地図表示ボタン %>
         <div class="flex flex-col">
 
@@ -51,6 +58,23 @@
 
         </div>
 
+        <%# 霧解除ボタン %>
+        <div class="flex flex-col">
+
+          <%= tag.button type: "button",
+            data: { action: "click->ui#fogOff", ui_target: "fogOffButtonInactive" },
+            class: "btn btn-primary bg-yellow-400/80 hover:bg-yellow500/80 text-black p-3 rounded-full shadow-lg active:scale-95 transition" do %>
+            <%= lucide_icon('cloud-fog') %>
+          <% end %>
+
+          <%= tag.button type: "button",
+            data: { action: "click->ui#fogOn", ui_target: "fogOffButtonActive"  },
+            class: "btn btn-primary bg-yellow-400/80 text-black p-3 rounded-full shadow-lg hover:bg-yellow-500/80 active:scale-95 transition ring-2 ring-orange-400 ring-offset-2 ring-offset-white hidden" do %>
+            <%= lucide_icon('cloud-fog') %>
+          <% end %>
+
+        </div>
+
       </div>
 
       <%# 右側探索中ボタンコンテナ %>
@@ -58,7 +82,7 @@
 
         <%# 現在地ボタン %>
         <%= tag.button type: "button",
-          data: { action: "click->ui#geolocateTrigger" },
+          data: { action: "click->ui#jumpToCurrentLocation" },
           class: "btn btn-primary bg-yellow-400/80 text-black p-3 rounded-full shadow-lg hover:bg-yellow-500/80 active:scale-95 transition" do %>
           <%= lucide_icon('locate') %>
         <% end %>
@@ -83,10 +107,40 @@
 
         </div>
 
+        <%# 霧解除ボタン %>
+        <div class="flex flex-col">
+
+          <%= tag.button type: "button",
+            data: { action: "click->ui#fogOff", ui_target: "fogOffButtonInactive" },
+            class: "btn btn-primary bg-yellow-400/80 hover:bg-yellow500/80 text-black p-3 rounded-full shadow-lg active:scale-95 transition" do %>
+            <%= lucide_icon('cloud-fog') %>
+          <% end %>
+
+          <%= tag.button type: "button",
+            data: { action: "click->ui#fogOn", ui_target: "fogOffButtonActive"  },
+            class: "btn btn-primary bg-yellow-400/80 text-black p-3 rounded-full shadow-lg hover:bg-yellow-500/80 active:scale-95 transition ring-2 ring-orange-400 ring-offset-2 ring-offset-white hidden" do %>
+            <%= lucide_icon('cloud-fog') %>
+          <% end %>
+
+        </div>
+
+      </div>
+
+      <%# 下側コンパスコンテナ %>
+      <div class="absolute bottom-full left-1/2 -translate-x-1/2 bg-white shadow-xl rounded-full px-5 py-3 flex items-center gap-4 transition-all hidden">
+        <div id="compass-arrow-container" class="relative w-10 h-10 flex items-center justify-center bg-blue-500 rounded-full text-white shadow-inner transition-transform duration-300">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-6 h-6">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 10.5 12 3m0 0 7.5 7.5M12 3v18" />
+          </svg>
+        </div>
+        <div class="flex flex-col">
+          <span class="text-[10px] text-gray-500 font-bold tracking-wider">次の目的地まで</span>
+          <span id="nav-distance-text" class="text-xl font-extrabold text-gray-800 leading-none">-- m</span>
+        </div>
       </div>
 
       <%# 下側一時停止ボタンコンテナ %>
-      <div class="absolute bottom-full left-1/2 -translate-x-1/2 pr-4 mb-3 pointer-events-auto duration-500 translate-y-[calc(100%+6rem)]" data-ui-target="pauseButtonContainer">
+      <div class="absolute bottom-full left-1/2 -translate-x-1/2 pr-4 mb-3 pointer-events-auto duration-500 translate-y-[calc(100%+7rem)]" data-ui-target="pauseButtonContainer">
 
         <%# 停止ボタン %>
       <div id="end-trip-button-container"></div>
@@ -111,8 +165,8 @@
 
     <%# ▼▼▼ タブバーエリア ▼▼▼ %>
     <% if show_tab_bar? %>
-      <div class="mx-auto max-w-md px-4 pointer-events-auto transition-transform duration-500 pb-4" data-ui-target="bottomSheet">
-        <div class="bg-white/20 backdrop-blur-sm rounded-2xl shadow-lg px-6 py-3">
+      <div class="mx-auto max-w-md px-4 pointer-events-none transition-transform duration-500 pb-4" data-ui-target="bottomSheet">
+        <div class="bg-white/20 backdrop-blur-sm pointer-events-auto rounded-2xl shadow-lg px-6 py-3 mb-4">
           <nav class="flex">
             <%= link_to root_path, class: tab_class(root_path) do %>
               <%= lucide_icon('map') %>
@@ -124,13 +178,21 @@
               <span class="text-xs">履歴</span>
             <% end %>
 
-            <%= link_to "#", class: tab_class(tutorial_path), data: { turbo_stream: true } do %>
+            <%= link_to explore_trips_path, class: tab_class(explore_trips_path) do %>
               <%= lucide_icon('users') %>
               <span class="text-xs">みんなの地図</span>
             <% end %>
 
-            <%= link_to mypage_path, class: tab_class(mypage_path) do %>
-              <%= lucide_icon('circle-user-round') %>
+            <%= link_to mypage_path, class: tab_class(mypage_path), id: "tab-bar-icon" do %>
+              <% if current_user&.avatar&.attached? %>
+                <div class="w-6 h-6 rounded-full flex items-center justify-center shadow-md">
+                  <%= image_tag avatar_url(current_user), class: "w-full h-full object-cover rounded-full" %>
+                </div>
+              <% else %>
+                <div class="w-6 h-6 bg-orange-400 rounded-full flex items-center justify-center shadow-md">
+                  <%= lucide_icon('user-round', class: "m-0 w-full h-full text-white") %>
+                </div>
+              <% end %>
               <span class="text-xs">マイページ</span>
             <% end %>
           </nav>

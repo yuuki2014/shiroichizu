@@ -1,0 +1,35 @@
+<%# locals: (post:, image:, index:, rotate_class:, width_class:, offset_class: "", z_class: "") %>
+
+<article class="relative <%= width_class %> <%= rotate_class %> <%= offset_class %> <%= z_class %>">
+  <div
+    class="relative border border-white/90 bg-[#fffdf7] p-1.5 pb-6 shadow-[0_8px_18px_rgba(45,35,20,0.14)] ring-1 ring-[#ead9bf]/70"
+    data-controller="image-loader"
+  >
+    <div class="relative aspect-square overflow-hidden bg-[#eee7db]">
+
+      <%# ローディング表示 %>
+      <div
+        class="absolute inset-0 z-10 flex items-center justify-center bg-[#eee7db] transition-opacity"
+        data-image-loader-target="placeholder"
+      >
+        <div class="h-8 w-8 animate-spin rounded-full border-2 border-stone-200 border-t-stone-500"></div>
+      </div>
+
+      <%= link_to image_viewer_post_path(post, index: index),
+                  data: { turbo_stream: true },
+                  class: "block h-full w-full" do %>
+        <%= image_tag media_image_url(image.variant(:thumb).key),
+                      loading: "lazy",
+                      class: "h-full w-full object-cover opacity-0 transition-opacity duration-300",
+                      data: {
+                        image_loader_target: "image",
+                        action: "load->image-loader#loaded error->image-loader#error"
+                      } %>
+      <% end %>
+    </div>
+
+    <p class="absolute bottom-1.5 left-2 right-2 truncate text-center font-serif text-[11px] leading-none text-[#5f594e]">
+      <%#= ここに写真のタイトルを入れる可能性あり %>
+    </p>
+  </div>
+</article>

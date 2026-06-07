@@ -1,3 +1,33 @@
 <% target_id = "map-title-" + @trip.public_uid %>
 <%= turbo_stream.replace target_id, partial: "trips/title" %>
+
+<%= turbo_stream.replace "completed-map-title-#{@trip.public_uid}" do %>
+  <div id="<%= "completed-map-title-#{@trip.public_uid}" %>" class="modal-header shrink-0 z-20 flex justify-between items-center w-full truncate">
+    <div class="text-lg font-bold">
+      <%= @trip.title %>
+    </div>
+    <div>
+      <%= button_to edit_title_trip_path(@trip),
+            method: :get,
+            params: { format: :turbo_stream },
+            form: { class: "contents" },
+            class: "flex items-center gap-3 rounded-full bg-[#FFE4C4] px-3 py-2 text-sm font-medium text-gray-600 transition hover:bg-[#ffd8a8]" do %>
+        <div class="flex items-center justify-center text-orange-400">
+          <%= lucide_icon("square-pen") %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+<% end %>
+
+<%= turbo_stream.replace "list-map-title-#{@trip.public_uid}" do %>
+  <div id="<%= "list-map-title-#{@trip.public_uid}" %>" class="mt-1 text-[15px] font-bold text-gray-900 leading-snug truncate">
+    <%= @trip.title %>
+  </div>
+<% end %>
+
+<%= turbo_stream.replace "share-button-#{@trip.public_uid}" do %>
+  <%= render "shared/share_button", trip: @trip %>
+<% end %>
+
 <%= turbo_stream.append "flash", partial: "shared/flash_message" %>

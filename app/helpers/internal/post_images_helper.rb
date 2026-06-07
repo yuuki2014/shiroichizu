@@ -1,0 +1,2 @@
+module Internal::PostImagesHelper
+end

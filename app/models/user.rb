@@ -2,9 +2,11 @@ class User < ApplicationRecord
   # Include default devise modules. Others available are:
   # :confirmable, :lockable, :timeoutable, :trackable and :omniauthable
   devise :database_authenticatable, :registerable, :recoverable, :rememberable, :validatable
+  before_validation :normalize_email
 
   # active storage設定
-  has_one_attached :avatar
+  has_one_attached :avatar, service: :cloudflare_public
+  # has_one_attached :avatar, service: Rails.env.production? ? :cloudflare_public : :local
 
   attr_accessor :remove_avatar
 
@@ -16,7 +18,12 @@ class User < ApplicationRecord
 
   # バリデーション定義
   # UUIDは保存の直前にDBが生成してくれるので、ここでは設定しない
-  validates :nickname, presence: true, length: { maximum: 20 }
+  validate :password_must_be_ascii_printable
+  validate :email_must_be_ascii
+  validates :nickname,
+    presence: true,
+    length: { maximum: 20 },
+    format: { without: /\R/, message: "に改行は使えません" }
   validates :role, :map_privacy, presence: true
 
   # アソシエーション定義
@@ -29,12 +36,11 @@ class User < ApplicationRecord
   # Devise の機能をオーバーライド
   # ゲスト以外の時だけメールアドレスを必須にする
   def email_required?
-    # ゲストなら false (いらない)、それ以外なら true (いる)
-    !guest?
+    !guest? # ゲストなら false (いらない)、それ以外なら true (いる)
   end
 
   def remember_expires_at
-    time = remember_created_at || Time.now.utc
+    time = Time.current
 
     case role
     when "guest"
@@ -61,6 +67,7 @@ class User < ApplicationRecord
     )
   end
 
+  # 現在、しようしていないと思われるので、後で確認後削除
   # 認証が完了した瞬間に自動で呼ばれるメソッド(Devise)
   def after_confirmation
     # デフォルトの処理を実行
@@ -86,5 +93,39 @@ class User < ApplicationRecord
   # User モデルの :id を public_uidに
   def to_param
     public_uid
+  end
+
+  # 会員用にデータを更新
+  def promote_to_general(email:, password:, password_confirmation:)
+    assign_attributes(
+      email: email,
+      password: password,
+      password_confirmation: password_confirmation,
+      role: :general,
+      nickname: "ユーザー"
+    )
+
+    save
+  end
+
+  private
+
+  def normalize_email
+    self.email = email.to_s.strip.downcase.presence
+  end
+
+  def password_must_be_ascii_printable
+    return if password.blank?
+
+    unless password.match?(/\A[\x21-\x7E]+\z/)
+      errors.add(:password, "は半角英数字・記号で入力してください")
+    end
+  end
+
+  def email_must_be_ascii
+    return if email.blank?
+    return if email.ascii_only?
+
+    errors.add(:email, "は半角文字で入力してください")
   end
 end

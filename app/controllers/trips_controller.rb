@@ -7,28 +7,58 @@ class TripsController < ApplicationController
 
     if @trip.present?
       if @trip.user_id == current_user&.id || @trip.visibility_unlisted? || @trip.visibility_public?
-        @first_footprint = @trip.footprints.first
-        @visited_geohashes =  @trip.footprints.distinct.pluck(:geohash)
-        @posts = @trip.posts.where(visibility: "public")
 
-        render
+        respond_to do |format|
+          format.html do
+            @first_footprint = @trip.footprints.first
+            @visited_geohashes =  @trip.footprints.distinct.pluck(:geohash)
+            render
+          end
+
+          format.json do
+            posts_scope = @trip.user_id == current_user&.id ? @trip.posts : @trip.posts.where(visibility: %i[ public inherit_trip ])
+            @posts = posts_scope.includes(images_attachments: :blob)
+
+            features = @posts&.map do |post|
+              {
+                type: "Feature",
+                geometry: {
+                  type: "Point",
+                  coordinates: [ post.longitude, post.latitude ]
+                },
+                properties: {
+                  public_uid: post.public_uid,
+                  icon_url: post.images.attached? ? helpers.media_image_url(post.images.first.variant(:map_icon).key) : "",
+                  is_icon_loaded: false
+                }
+              }
+            end
+
+            MediaAccessGrantService.call(posts: @posts, cookies: cookies)
+            render json: {
+              type: "FeatureCollection",
+              features: features
+            }
+          end
+        end
       else
         flash[:alert] = "地図が見つかりませんでした"
         redirect_to trips_path
       end
     else
       flash[:alert] = "地図が見つかりませんでした"
-      redirect_to root_path
+      redirect_to trips_path
     end
   end
 
   def index
     if user_signed_in?
       @trips = current_user.trips.order(started_at: :desc)
+      @posts_counts = Post.where(trip_id: @trips.select(:id)).group(:trip_id).count
       @geohash_counts = Footprint.where(trip_id: @trips.select(:id)).group(:trip_id).distinct.count(:geohash)
     else
-      flash[:alert] = "この機能はゲストか会員しか使えません"
-      redirect_to root_path
+      # flash[:alert] = "この機能はゲストか会員しか使えません"
+      # redirect_to root_path
     end
   end
 
@@ -110,8 +140,16 @@ class TripsController < ApplicationController
       return
     end
 
+    @trip_dom_id = helpers.dom_id(@trip)
+
+    is_current_trip_page = request.referer.to_s.include?(@trip.public_uid)
+
     if @trip.destroy
-      redirect_to trips_path, notice: "地図を削除しました"
+      if is_current_trip_page
+        redirect_to trips_path, notice: "地図を削除しました", status: :see_other
+      else
+        respond_modal(flash_message: { notice: "地図を削除しました" })
+      end
     else
       respond_modal("shared/flash_and_error", locals: { object: @trip }, flash_message: { alert: "地図の削除に失敗しました" })
     end

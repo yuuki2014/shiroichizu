@@ -1,0 +1,22 @@
+<%# 全体の背景コンテナ %>
+<div class="h-full bg-[#FFFBE6] flex flex-col">
+
+  <%# --- ヘッダー部分 --- %>
+  <header class="sticky top-0 z-10 flex items-center justify-center bg-orange-300 py-2 px-4 shadow-sm">
+
+    <%# タイトル %>
+    <div class="text-xl font-bold text-gray-800">
+      今までの記録
+    </div>
+
+    <%# 右側の「累計地図」ボタン %>
+    <%= link_to "累計地図", my_map_path, class: "absolute right-2 rounded-full bg-orange-400 px-4 py-1.5 text-sm font-bold text-white shadow transition hover:bg-orange-500 active:scale-95" %>
+  </header>
+
+  <%= render "shared/user_records_frame",
+      active_tab: :posts,
+      trips: nil,
+      geohash_counts: nil,
+      posts: @posts %>
+
+</div>

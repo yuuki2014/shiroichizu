@@ -28,13 +28,14 @@ class Trip < ApplicationRecord
   # アソシエーション定義
   belongs_to :user
   has_many :footprints, dependent: :destroy
-  has_many :posts, dependent: :nullify
+  has_many :posts, dependent: :destroy
+  # has_many :posts, dependent: :nullify
 
   # 初期値定義
   # 開始時刻はアプリ側の時間を入れる
   attribute :started_at, :datetime, default: -> { Time.current }
   # 地図名のデフォルト値は、開始位置から取得するように後で設定を変える
-  attribute :title, :string, default: "デフォルト地図"
+  attribute :title, :string, default: "名無しの地図"
 
   # tripモデルのidをpublic_uidに
   def to_param

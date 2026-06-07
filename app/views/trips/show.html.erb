@@ -1,4 +1,4 @@
-<%# 全体の背景コンテナ（クリーム色） %>
+<%# 全体の背景コンテナ %>
 <div class="h-full w-full bg-[#FFFBE6] flex flex-col">
 
   <%# --- ヘッダー部分 --- %>
@@ -16,7 +16,7 @@
 
     <%# 右側の「…」ボタン %>
     <div class="flex-none">
-      <% if @trip %>
+      <% if @trip && @trip.user_id == current_user&.id %>
         <%= link_to bottom_sheets_path(@trip), class: "block py-1.5", data: { turbo_stream: true } do %>
           <%= lucide_icon("ellipsis-vertical", class: "transition text-gray-900 hover:text-gray-700 active:scale-95")%>
         <% end %>
@@ -33,15 +33,28 @@
       data-history-map-ui-outlet="#ui"
       data-history-map-posts-outlet="#posts"
       class="absolute inset-0 h-full w-full"
-      data-maptiler-key="<%= Rails.application.credentials.dig(:maptiler, :api_key) %>"
+      data-style-url="<%= ENV.fetch("STYLE_URL") %>"
       data-history-map-longitude-value="<%= @first_footprint&.longitude %>"
       data-history-map-latitude-value="<%= @first_footprint&.latitude %>"
       data-history-map-visited-geohashes-value="<%= @visited_geohashes.to_json %>"
-      data-history-map-posts-value="<%= @posts.to_json(only: [:latitude, :longitude, :public_uid])%>"
+      data-history-map-posts-url-value="<%= trip_path(@trip.public_uid, format: :json) %>"
     >
-      <div class="fixed bg-white w-full h-[130%] -bottom-[30%] inset-0 z-20 transition-transform duration-[2000ms] opacity-100 pointer-events-none ease-in-out
-                  [mask-image:linear-gradient(to_bottom,black_80%,transparent)]"
-                  data-history-map-target="mapOverlay"></div>
+      <%# オーバレイ要素 %>
+      <div class="fixed w-full h-[130%] -bottom-[30%] inset-0 z-20 transition-transform duration-[2000ms] opacity-100 pointer-events-none ease-in-out
+                  [mask-image:linear-gradient(to_bottom,black_80%,transparent)] animate-fog-twinkle"
+                  data-history-map-target="mapOverlay">
+
+        <%# ロゴ %>
+        <div class="absolute top-0 w-full h-screen flex items-center justify-center pointer-events-none z-[4] -translate-y-8">
+          <%= image_tag "logo-vertical.svg", class: "w-36 sm:w-48 opacity-[0.3] select-none animate-pulse" %>
+        </div>
+
+        <%# 風のように通り過ぎる影の層 %>
+        <div class="absolute inset-0 pointer-events-none animate-wind-sweep"></div>
+      </div>
+
+      <%= turbo_stream_from [current_user, :map_image_updates] %>
+    </div>
     </div>
   </div>
 </div>

@@ -16,13 +16,27 @@ amazon:
 
 cloudflare:
   service: S3
-  endpoint: "https://89bd190ef8daebf81c24c61e64b27cc3.r2.cloudflarestorage.com"
-  access_key_id: <%= Rails.application.credentials.dig(:cloudflare, :access_key_id) %>
-  secret_access_key: <%= Rails.application.credentials.dig(:cloudflare, :secret_access_key) %>
+  endpoint: <%= ENV.fetch("R2_ENDPOINT") %>
+  access_key_id: <%= ENV.fetch("CLOUDFLARE_ACCESS_KEY_ID") %>
+  secret_access_key: <%= ENV.fetch("CLOUDFLARE_SECRET_ACCESS_KEY") %>
   region: auto
-  bucket: "white-map-app-production"
+  bucket: <%= ENV.fetch("CLOUDFLARE_R2_BUCKET") %>
   request_checksum_calculation: "when_required"
   response_checksum_validation: "when_required"
+  upload:
+    cache_control: "public, max-age=1800, s-maxage=31536000, immutable"
+
+cloudflare_public:
+  service: S3
+  endpoint: <%= ENV.fetch("R2_ENDPOINT") %>
+  access_key_id: <%= ENV.fetch("R2_PUBLIC_ACCESS_KEY_ID") %>
+  secret_access_key: <%= ENV.fetch("R2_PUBLIC_SECRET_ACCESS_KEY") %>
+  region: auto
+  bucket: <%= ENV.fetch("R2_PUBLIC_BUCKET") %>
+  request_checksum_calculation: "when_required"
+  response_checksum_validation: "when_required"
+  upload:
+    cache_control: "public, max-age=31536000, immutable"
 
 # Remember not to checkin your GCS keyfile to a repository
 # google:
