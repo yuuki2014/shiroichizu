@@ -5,15 +5,15 @@ module ApplicationHelper
     active_paths =
       case path
       when trips_path
-        [trips_path, posts_path]
+        [ trips_path, posts_path ]
       when explore_trips_path
-        [explore_trips_path, explore_posts_path]
+        [ explore_trips_path, explore_posts_path ]
       when mypage_path
-        [mypage_path]
+        [ mypage_path ]
       when root_path
-        [root_path]
+        [ root_path ]
       else
-        [path]
+        [ path ]
       end
 
     is_active = active_paths.any? { |active_path| current_page?(active_path) }
