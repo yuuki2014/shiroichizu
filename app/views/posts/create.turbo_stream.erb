@@ -1,10 +1,10 @@
 <%= turbo_stream.update "modal-container", "" %>
-<%= turbo_stream.replace "flash", partial: "shared/flash_message" %>
+<%= turbo_stream.append "flash", partial: "shared/flash_message" %>
 <%= turbo_stream.append "history-map" do %>
-  <div data-history-map-target="appendMarker" data-post="<%= @post&.to_json %>">
+  <div data-history-map-target="appendMarker" data-post="<%= @post&.to_json(only: [:longitude, :latitude, :public_uid]) %>">
   </div>
 <% end %>
 <%= turbo_stream.append "main-map" do %>
-  <div data-map-target="appendMarker" data-post="<%= @post&.to_json %>">
+  <div data-map-target="appendMarker" data-post="<%= @post&.to_json(only: [:longitude, :latitude, :public_uid]) %>">
   </div>
 <% end %>

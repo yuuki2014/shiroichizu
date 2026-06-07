@@ -10,11 +10,15 @@
   "dependencies": {
     "@hotwired/stimulus": "^3.2.2",
     "@hotwired/turbo-rails": "^8.0.20",
+    "@maplibre/maplibre-gl-geocoder": "^1.9.4",
     "@rails/request.js": "^0.0.13",
+    "@sentry/browser": "^10.48.0",
     "@turf/turf": "^7.3.1",
+    "compressorjs": "^1.2.1",
     "geolib": "^3.3.4",
     "maplibre-gl": "^5.15.0",
     "ngeohash": "^0.6.3",
+    "pmtiles": "^4.4.1",
     "swiper": "^12.0.3"
   }
 }

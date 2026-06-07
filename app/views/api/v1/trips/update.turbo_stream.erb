@@ -1,4 +1,4 @@
-<%= turbo_stream.update "modal-container",
+<%#= turbo_stream.update "modal-container",
       partial: "shared/modal",
       locals: {
         title: "探索を記録しました！",
@@ -15,3 +15,5 @@
           }
         }
       } %>
+
+<%= turbo_stream.update "modal-container", partial: "shared/save_completed_modal", locals: { trip: @trip } %>

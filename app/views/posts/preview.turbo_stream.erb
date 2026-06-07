@@ -1,0 +1,61 @@
+<%= turbo_stream.update "bottom-sheet-container" do %>
+  <% images = @post.images.to_a.first(6) %>
+  <% image_count = images.size %>
+
+  <div
+    class="fixed inset-0 z-40 h-dvh w-full pointer-events-none opacity-0 transition-all duration-300"
+    data-controller="bottom-sheet"
+  >
+    <div
+      class="absolute inset-0 z-0 bg-black/20 pointer-events-auto"
+      data-bottom-sheet-target="bottomSheetBackdrop"
+      data-action="click->bottom-sheet#close"
+    ></div>
+
+    <div
+      data-bottom-sheet-target="bottomSheetBox"
+      class="absolute inset-x-0 top-12 bottom-0 z-10 overflow-hidden bg-transparent pointer-events-auto transition-transform duration-300 translate-y-full"
+    >
+      <%# 右上操作ボタン %>
+      <div class="absolute right-4 top-2 z-[100] flex items-center gap-2">
+
+        <%# 三点リーダボタン %>
+        <% if @post.user_id == current_user&.id %>
+          <div
+            class="relative"
+            data-controller="dropdown"
+            data-dropdown-post-url-value="<%= confirm_destroy_post_path(@post) %>"
+          >
+            <button
+              type="button"
+              class="flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-stone-700 shadow-lg backdrop-blur-md transition hover:bg-white active:scale-95"
+              data-action="click->dropdown#toggle"
+            >
+              <%= lucide_icon("ellipsis", class: "h-5 w-5") %>
+            </button>
+          </div>
+        <% end %>
+
+        <%# バツボタン %>
+        <button
+          type="button"
+          class="flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-stone-700 shadow-lg backdrop-blur-md transition hover:bg-white active:scale-95"
+          data-action="click->bottom-sheet#close"
+        >
+          <%= lucide_icon "x", class: "h-6 w-6" %>
+        </button>
+
+      </div>
+
+      <div class="absolute left-4 top-5 z-[90] rounded-full bg-black/25 px-3 py-1.5 text-xs leading-none text-white/95 shadow-sm backdrop-blur-md">
+        <%= @post.visited_at&.strftime("%Y/%m/%d %H:%M") %>
+      </div>
+
+      <div class="absolute inset-0 z-20 overflow-hidden px-4 pb-4 pt-14">
+        <%= render "posts/scrapbook_layouts/count_#{image_count}",
+                    post: @post,
+                    images: images %>
+      </div>
+    </div>
+  </div>
+<% end %>

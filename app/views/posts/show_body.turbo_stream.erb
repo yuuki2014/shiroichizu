@@ -1,0 +1,52 @@
+<%= turbo_stream.append "modal-container" do %>
+  <div
+    class="fixed inset-0 z-40 flex h-dvh w-full items-stretch justify-center p-0 opacity-0 pointer-events-none transition-all duration-300 sm:items-center sm:p-4 lg:p-10"
+    data-controller="modal"
+  >
+    <%# --- バックドロップ --- %>
+    <div
+      class="modal-backdrop absolute inset-0 z-0 bg-black/50 pointer-events-auto"
+      data-modal-target="modalBackdrop"
+      data-action="click->modal#close"
+    ></div>
+
+    <%# --- モーダル枠 --- %>
+    <div
+      class="modal-box relative z-10 flex h-full w-full max-w-none translate-y-40 flex-col items-center gap-4 rounded-none px-0 pb-6 pt-1 opacity-0 pointer-events-auto transition-all duration-500 ease-out sm:h-auto sm:max-h-[90dvh] sm:max-w-xl sm:rounded-xl sm:pt-2 overflow-visible"
+      data-modal-target="modalBox"
+    >
+      <%# --- ヘッダー --- %>
+      <div class="modal-header z-20 w-full shrink-0 px-2 pt-2 sm:px-4">
+        <div class="flex items-center justify-between pb-3">
+          <div class="flex items-center gap-3"></div>
+
+          <div class="flex items-center gap-3">
+            <button
+              type="button"
+              class="flex h-10 w-10 items-center justify-center rounded-full bg-gray-500/50 text-white transition hover:bg-gray-600/60"
+              data-action="click->modal#close"
+            >
+              <%= lucide_icon("x", class: "w-6 h-6") %>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <%# --- モーダル本文 --- %>
+      <div class="modal-body min-h-0 w-full flex-1 overflow-y-auto overscroll-contain px-3 pb-10 pt-8 sm:px-6 sm:pb-12 sm:pt-10">
+        <% if @post.body.present? %>
+          <div class="mx-auto flex w-full max-w-3xl justify-center">
+            <div class="flex w-full justify-center pt-4">
+              <%= render "posts/scrapbook_memo",
+                          post: @post,
+                          width_class: "w-[92%] sm:w-[82%]",
+                          offset_class: "",
+                          line_class: "",
+                          open_body_link: false %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+<% end %>

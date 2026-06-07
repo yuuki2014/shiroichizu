@@ -20,22 +20,25 @@ export default class extends Controller {
     "uiOverlay",
     "cumulativeButtonActive",
     "cumulativeButtonInactive",
+    "fogOffButtonInactive",
+    "fogOffButtonActive",
   ]
   static values = { status: String,
                     tripId: String,
-                    postLatitude: Number,
-                    postLongitude: Number,
+                    longitude: Number,
+                    latitude: Number,
                   }
 
   connect() {
-    console.log(EVENTS)
-    console.log("接続テスト");
-    // this.mapOutlet.showLocationDeniedModal()
     // 初期化
     // status の初期値をセット
     if(!this.hasStatusValue) {
-      this.statusValue = STATUS.STOPPED;
+      if(this.hasMapOutlet){
+        this.statusValue = STATUS.STOPPED;
+      }
     }
+
+    this.oldTripGeohashes = [];
 
     // UIを隠すタイマーIDを保持
     this.hiddenTimerId = null;
@@ -60,11 +63,22 @@ export default class extends Controller {
 
   // trip-id-receiver 接続時に呼ばれる
   tripIdReceiverTargetConnected(element){
-    const newId = element.dataset.tripId
+    const newId = element.dataset.tripId;
+    this.oldTripGeohashes = [];
+    this.mapOutlet.postsValue = [];
+    const oldGeohashes = JSON.parse(element.dataset.visitedGeohashes);
+    const oldPostsUrl = element.dataset.postsUrl;
+
+    if(oldGeohashes){
+      this.oldTripGeohashes = oldGeohashes;
+    }
+    if(oldPostsUrl){
+      this.mapOutlet.postsUrlValue = oldPostsUrl;
+    }
 
     if (newId) {
       console.log("trip ID: ", newId);
-      this.tripIdValue = newId
+      this.tripIdValue = newId;
     }
     element.remove();
   }
@@ -73,6 +87,7 @@ export default class extends Controller {
     // 初期化時は何もしない
     if(!value) return
 
+    console.log("以前のtrip id: ", previousValue)
     console.log(`Trip ID が${value}になりました。`)
     this.startRecording();
   }
@@ -80,17 +95,24 @@ export default class extends Controller {
   stopRecording(){
     console.log("記録停止中")
     this.statusValue = STATUS.STOPPED;
-    this.mapOutlet.setStatus(this.statusValue);
+    this.tripIdValue = "";
+    this.oldTripGeohashes = [];
+    if(this.hasMapOutlet){
+      this.mapOutlet.setStatus(this.statusValue);
+      this.mapOutlet.postsValue = [];
+    }
   }
 
   startRecording(){
     console.log("記録モード開始")
-    this.mapOutlet.setTripId(this.tripIdValue);
+    this.mapOutlet.setTripId(this.tripIdValue, this.oldTripGeohashes);
     this.statusValue = STATUS.RECORDING
     this.mapOutlet.setStatus(this.statusValue);
-    this.mapOutlet.postFootprint();
+    // this.mapOutlet.postFootprint();
+    this.mapOutlet.recordStartFootprint();
     this.mapOutlet.setFlushTimer();
-    this.mapOutlet.executeFogClearing();
+    // this.mapOutlet.executeFogClearing(true);
+    this.mapOutlet.updateRealtimeFogClearing(true);
 
     // デバウンスイベントをセット
     this.documentSetHiddenTimer();
@@ -106,7 +128,7 @@ export default class extends Controller {
   pauseRecording(){
     console.log("一時停止");
     this.mapOutlet.flushBuffer();
-    this.mapOutlet.postFootprint();
+    // this.mapOutlet.postFootprint();
     this.statusValue = STATUS.PAUSED
     this.mapOutlet.setStatus(this.statusValue);
   }
@@ -116,22 +138,27 @@ export default class extends Controller {
     this.mapOutlet.clearFlushTimer();
     this.statusValue = STATUS.ENDED
     this.mapOutlet.setStatus(this.statusValue);
+    this.mapOutlet.postsUrlValue = "";
+    this.mapOutlet.clearMapIcon();
+
+    this.mapOutlet.mergeVisitedToCumulative();
     this.mapOutlet.resetFog();
-    this.mapOutlet.setCumulativeGeohashesAndFeature(this.mapOutlet.cumulativeGeohashes, this.mapOutlet.cumulativeFeature);
 
     this.documentRemoveHiddenTimer();
   }
 
   // status 変化時に自動で呼ばれるメソッド
   statusValueChanged(value, previousValue){
-    console.log(`状態が ${previousValue} から ${value} に変わりました`)
+    if(value){
+      console.log(`状態が ${previousValue} から ${value} に変わりました`)
+    }
 
     switch (value){
       // 探索停止(初期状態)になった時
       case STATUS.STOPPED:
         if (this.hasPlayButtonTarget) {
           this.playButtonTarget.classList.remove("hidden")
-          this.pauseButtonContainerTarget.classList.add("translate-y-[calc(100%+6rem)]")
+          this.pauseButtonContainerTarget.classList.add("translate-y-[calc(100%+7rem)]")
           this.rightNormalButtonContainerTarget.classList.remove("translate-x-[calc(100%+8px)]")
           this.pauseButtonTarget.classList.add("hidden")
           this.leftButtonContainerTarget.classList.add("-translate-x-full")
@@ -149,13 +176,13 @@ export default class extends Controller {
         this.rightNormalButtonContainerTarget.classList.add("translate-x-[calc(100%+8px)]")
         this.rightRecordingButtonContainerTarget.classList.remove("translate-x-[calc(100%+8px)]")
         this.bottomSheetTarget.classList.add("translate-y-full")
-        this.pauseButtonContainerTarget.classList.add("translate-y-[calc(100%+6rem)]")
+        this.pauseButtonContainerTarget.classList.add("translate-y-[calc(100%+7rem)]")
         break;
       // 地図記録一時停止中になった時
       case STATUS.PAUSED:
         this.playButtonTarget.classList.remove("hidden")
         this.pauseButtonTarget.classList.add("hidden")
-        this.pauseButtonContainerTarget.classList.remove("translate-y-[calc(100%+6rem)]")
+        this.pauseButtonContainerTarget.classList.remove("translate-y-[calc(100%+7rem)]")
         break;
       case STATUS.ENDED:
         // 保存確認モーダルを表示する
@@ -173,7 +200,7 @@ export default class extends Controller {
     this.transitionEvents = new AbortController();
 
     if(!this.maplibreTopContainer){
-      this.maplibreTopContainer = document.querySelector(".maplibregl-ctrl-group")
+      this.maplibreTopContainer = document.querySelector(".maplibregl-ctrl-top-right")
     }
 
     this.maplibreTopContainer.classList.add("transition-opacity", "duration-500", "opacity-0")
@@ -188,7 +215,7 @@ export default class extends Controller {
     this.rightRecordingButtonContainerTarget.classList.remove("translate-x-[calc(100%+8px)]")
 
     if(this.maplibreTopContainer){
-      this.maplibreTopContainer = document.querySelector(".maplibregl-ctrl-group")
+      this.maplibreTopContainer = document.querySelector(".maplibregl-ctrl-top-right")
     }
     this.maplibreTopContainer.classList.remove("hidden");
     // this.maplibreTopContainer.removeEventListener("transitionend", this._handleTransitionEnd);
@@ -221,7 +248,7 @@ export default class extends Controller {
   // 一定時間後アイコンを隠す
   setHiddenTimer(){
     if(!this.maplibreTopContainer){
-      this.maplibreTopContainer = document.querySelector(".maplibregl-ctrl-group");
+      this.maplibreTopContainer = document.querySelector(".maplibregl-ctrl-top-right");
     }
 
     clearTimeout(this.hiddenTimerId);
@@ -292,5 +319,73 @@ export default class extends Controller {
     // this.maplibreTopContainer.removeEventListener("transitionend", this._handleTransitionEnd);
     this.transitionEvents?.abort();
     this.documentRemoveHiddenTimer();
+  }
+
+  currentPositionPost(event){
+    event.preventDefault()
+    if(!this.hasLongitudeValue || !this.hasLatitudeValue) return;
+
+    const lat = this.latitudeValue
+    const lng = this.longitudeValue
+
+    const form = event.currentTarget.closest("form")
+
+    form.querySelector('input[name="lat"]').value = lat
+    form.querySelector('input[name="lng"]').value = lng
+
+    form.requestSubmit()
+  }
+
+  // geolocateボタンを起動
+  geolocateTrigger(){
+    if(this.hasMapOutlet){
+      this.mapOutlet.geolocateTrigger();
+    }
+  }
+
+  // 現在地追従にして、現在地に移動(ズーム18)
+  jumpToCurrentLocation(){
+    if(this.hasMapOutlet){
+      this.mapOutlet.jumpToCurrentLocation();
+    }
+  }
+
+  removePost(event){
+    const postUuid = event.currentTarget.dataset.postUuid;
+
+    if(this.hasMapOutlet){
+      this.mapOutlet.removePost(postUuid);
+    }
+    if(this.hasHistoryMapOutlet){
+      this.historyMapOutlet.removePost(postUuid);
+    }
+  }
+
+  fogOff(){
+    if (this.hasMapOutlet && !this.mapOutlet.mapInitEnd) return;
+    console.log("霧を非表示")
+
+    this.fogOffButtonActiveTargets.forEach(el => {
+      el.classList.remove("hidden");
+    });
+    this.fogOffButtonInactiveTargets.forEach(el => {
+      el.classList.add("hidden");
+    });
+
+    this.mapOutlet.fogOff();
+  }
+
+  fogOn(){
+    if (this.hasMapOutlet && !this.mapOutlet.mapInitEnd) return;
+    console.log("霧を表示")
+
+    this.fogOffButtonActiveTargets.forEach(el => {
+      el.classList.add("hidden");
+    });
+    this.fogOffButtonInactiveTargets.forEach(el => {
+      el.classList.remove("hidden");
+    });
+
+    this.mapOutlet.fogOn();
   }
 }

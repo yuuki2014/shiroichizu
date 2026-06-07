@@ -10,8 +10,8 @@ export default class extends Controller {
     setTimeout(() => {
       this.element.classList.add("opacity-0")
       this.element.addEventListener("transitionend", () => {
-      this.element.remove();
-    }, { once: true });
-    }, 1500)
+        this.element.remove();
+      }, { once: true });
+    }, 2300)
   }
 }

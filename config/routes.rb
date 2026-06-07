@@ -7,10 +7,24 @@ Rails.application.routes.draw do
   # devise_for :users
   devise_for :users, controllers: {
     registrations: "users/registrations",
-    sessions: "users/sessions"
+    sessions: "users/sessions",
+    passwords: "users/passwords"
   }
-  # resources :users, param: :public_uid, only: [ :show ]
-  get "users/:public_uid", to: "users#show", as: "user"
+  resources :users, only: %i[ show ] do
+    collection do
+      get :confirm_destroy
+    end
+  end
+
+  resource :email_verification, only: %i[ new create ]
+
+  resource :account_setting, only: %i[ show ]
+
+  resource :email_change_verification, only: %i[ new create ]
+  resource :email_change, only: %i[ edit ]
+
+  resource :profile, controller: "users", only: %i[ edit update ]
+  # get "users/:public_uid", to: "users#show", as: "user"
   get "mypage", to: "users#mypage", as: "mypage"
   resource :tutorial, only: [ :show, :update ]
 
@@ -28,19 +42,27 @@ Rails.application.routes.draw do
   # root "posts#index"
   resources :trips, only: %i[ index show destroy ] do
     member do
+      resource :bottom_sheets, only: %i[ show ]
       get "confirm_destroy", to: "trips#confirm_destroy"
       get "post_bottom_sheet", to: "bottom_sheets#show_post_bottom_sheet"
-      patch :status
+      patch :update_status
       get :edit_status
       get :edit_title
       patch :update_title
-      get "select_position", to: "posts#select_position"
-      resources :posts, only: %i[ new create ] do
-        collection do
-        end
-      end
     end
-    resource :bottom_sheets, only: %i[ show ] do
+    get "select_position", to: "posts#select_position"
+    resources :posts, only: %i[ new create ]
+  end
+
+  resources :posts, only: %i[ index show destroy ] do
+    collection do
+      post :cluster_preview
+    end
+    member do
+      get :show_body
+      get :preview
+      get :image_viewer
+      get :confirm_destroy
     end
   end
 
@@ -48,11 +70,15 @@ Rails.application.routes.draw do
 
   post "decisions", to: "decisions#create", as: :decisions
   get "location_denied", to: "tutorials#location_denied", as: :location_denied
-  get "post_flash", to: "posts#post_flash", as: :post_flash
   root "trips#new"
 
+  get "about", to: "pages#about"
   get "privacy_policy", to: "pages#privacy_policy"
   get "terms", to: "pages#terms"
+  get "licenses", to: "pages#licenses"
+
+  resource :contact, only: %i[ show create ]
+
   resource :my_map, only: :show
 
   namespace :api do
@@ -61,6 +87,8 @@ Rails.application.routes.draw do
       resources :trips, only: %i[ create update ] do
         member do
           get :end_check
+          get :resume
+          patch :finish_and_create
         end
 
         resources :footprints, only: [ :create ] do
@@ -70,5 +98,20 @@ Rails.application.routes.draw do
         end
       end
     end
+  end
+
+  namespace :explore do
+    resources :trips, only: %i[ index ]
+    resources :posts, only: %i[ index ]
+  end
+
+  # good_jobのダッシュボード
+  authenticate :user, ->(user) { user.admin? } do
+    mount GoodJob::Engine => "good_job"
+  end
+
+  # レターオープナー
+  if Rails.env.development?
+    mount LetterOpenerWeb::Engine, at: "/letter_opener"
   end
 end

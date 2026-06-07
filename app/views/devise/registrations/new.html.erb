@@ -1,62 +1,97 @@
+<%# 新規登録ページ %>
 <%# ヘッダー %>
 <% content_for :header do %>
   <%= render 'shared/header', back_path: mypage_path, title: "新規会員登録", bg_color: "bg-orange-300" %>
 <% end %>
 
 <%# メインコンテナ %>
-<div class="min-h-screen bg-[#F7F3C7] flex flex-col items-center px-6 pb-10 font-sans text-gray-800">
+<div class="min-h-screen bg-[#FFFBE6] flex flex-col items-center px-6 pb-10 font-sans text-gray-800">
 
-  <%# 1. 文言エリア %>
+  <%# ロゴエリア %>
   <div class="mt-10 pt-4 pb-4 w-full flex justify-center">
+    <div class="size-44 rounded flex items-center justify-center">
+      <%= image_tag "logo-vertical.svg" %>
+    </div>
   </div>
 
-  <%# 2. フォームエリア %>
+  <%# フォームエリア %>
   <div class="w-full max-w-sm">
-    <%= form_with(model: resource, url: registration_path(resource_name), class: "space-y-6") do |f| %>
+    <%= form_with(model: resource, url: registration_path(resource_name), method: :post, class: "space-y-6") do |f| %>
       <%= render "devise/shared/error_messages", resource: resource %>
 
       <%# メールアドレス %>
       <div class="field">
-        <%= f.label :email, "メールアドレス", class: "block text-sm font-bold mb-2" %>
-        <%= f.email_field :email, autofocus: true, autocomplete: "email", placeholder: "shiroi_chizu@test.com",
-            class: "w-full px-4 py-3 rounded-xl border-none shadow-sm text-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-orange-300 outline-none" %>
+        <div class="block text-sm font-bold mb-2 text-gray-700">メールアドレス</div>
+
+        <%# ダミー枠 %>
+        <div class="w-full px-4 py-3 bg-gray-100 rounded-xl border-none shadow-sm text-gray-300 cursor-not-allowed select-none">
+          <%= @email %>
+        </div>
+        <%= hidden_field_tag :token, @token %>
       </div>
 
       <%# パスワード %>
-      <div class="field">
+      <div class="field" data-controller="password">
         <div class="flex items-center mb-2 gap-3">
           <%= f.label :password, "パスワード", class: "text-sm font-bold" %>
 
           <% if @minimum_password_length %>
             <span class="text-xs text-gray-400">
-              ※ <%= @minimum_password_length %>文字以上
+              ※ 半角英数記号<%= @minimum_password_length %>文字以上
             </span>
           <% end %><br />
         </div>
 
         <div class="relative">
-          <%= f.password_field :password, autocomplete: "new-password", placeholder: "••••••••••••••••",
-              class: "w-full px-4 py-3 rounded-xl border-none shadow-sm text-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-orange-300 outline-none tracking-widest" %>
+          <%= f.password_field :password,
+              required: true,
+              autocomplete: "new-password",
+              minlength: @minimum_password_length,
+              maxlength: 128,
+              pattern: "[\\x21-\\x7E]+",
+              placeholder: "••••••••",
+              autofocus: true,
+              class: "w-full px-4 py-3 pr-12 rounded-xl border-none shadow-sm text-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-orange-300 outline-none tracking-widest",
+              data: { password_target: "input" } %>
 
-          <%# 目のアイコン（見た目のみ） %>
-          <div class="absolute inset-y-0 right-0 pr-3 flex items-center cursor-pointer text-gray-500">
-            <%= lucide_icon('eye', class: "w-6 h-6") %>
-          </div>
+          <%# 目のアイコン %>
+          <button
+            type="button"
+            class="absolute inset-y-0 right-0 pr-3 flex items-center cursor-pointer text-gray-500"
+            data-password-target="button"
+            data-action="click->password#toggle"
+          >
+            <%= lucide_icon("eye", class: "w-6 h-6", data: { password_target: "eyeIcon" }) %>
+            <%= lucide_icon("eye-off", class: "w-6 h-6 hidden", data: { password_target: "eyeOffIcon" }) %>
+          </button>
         </div>
       </div>
 
       <%# パスワード確認 %>
-      <div class="field">
+      <div class="field" data-controller="password">
         <%= f.label :password_confirmation, "パスワード(確認用)", class: "block text-sm font-bold mb-2" %>
 
         <div class="relative">
-          <%= f.password_field :password_confirmation, autocomplete: "new-password", placeholder: "••••••••••••••••",
-              class: "w-full px-4 py-3 rounded-xl border-none shadow-sm text-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-orange-300 outline-none tracking-widest" %>
+          <%= f.password_field :password_confirmation,
+              required: true,
+              autocomplete: "new-password",
+              minlength: @minimum_password_length,
+              maxlength: 128,
+              pattern: "[\\x21-\\x7E]+",
+              placeholder: "••••••••",
+              class: "w-full px-4 py-3 pr-12 rounded-xl border-none shadow-sm text-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-orange-300 outline-none tracking-widest",
+              data: { password_target: "input" } %>
 
-          <%# 目のアイコン（見た目のみ） %>
-          <div class="absolute inset-y-0 right-0 pr-3 flex items-center cursor-pointer text-gray-500">
-            <%= lucide_icon('eye', class: "w-6 h-6") %>
-          </div>
+          <%# 目のアイコン %>
+          <button
+            type="button"
+            class="absolute inset-y-0 right-0 pr-3 flex items-center cursor-pointer text-gray-500"
+            data-password-target="button"
+            data-action="click->password#toggle"
+          >
+            <%= lucide_icon("eye", class: "w-6 h-6", data: { password_target: "eyeIcon" }) %>
+            <%= lucide_icon("eye-off", class: "w-6 h-6 hidden", data: { password_target: "eyeOffIcon" }) %>
+          </button>
         </div>
       </div>
 
@@ -80,7 +115,7 @@
     <% end %>
   </div>
 
-  <%# 3. フッターエリア（ログインリンク） %>
+  <%# フッターエリア（ログインリンク） %>
   <div class="mt-auto w-full max-w-sm pt-10">
     <p class="text-center text-xs text-gray-400 mb-2">すでにアカウントをお持ちの方は
       <%= link_to "ログイン", new_user_session_path, class: "text-sm text-blue-400 hover:text-blue-600 underline" %>

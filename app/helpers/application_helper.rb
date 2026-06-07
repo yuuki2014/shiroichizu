@@ -6,7 +6,7 @@ module ApplicationHelper
 
     # mypageからリダイレクトされて開いているユーザー詳細ページもアクティブに
     if user_signed_in?
-      if path == user_path(current_user)
+      if path == mypage_path
         if controller_name == "users" && action_name == "show"
           is_active = true
         end
@@ -22,16 +22,6 @@ module ApplicationHelper
 
   # フッター表示用
   def show_footer?
-    # allowed_paths = [
-    #   root_path,
-    #   trips_path,
-    #   mypage_path
-    # ]
-
-    # if user_signed_in?
-    #   allowed_paths << user_path(current_user)
-    # end
-
     if user_signed_in?
       if controller_name == "users"
         if action_name == "show"
@@ -52,6 +42,18 @@ module ApplicationHelper
       end
     end
 
+    if controller_name == "account_settings"
+      if action_name.in?(%w[ show ])
+        return true
+      end
+    end
+
+    if controller_name == "posts"
+      if action_name.in?(%w[ index ])
+        return true
+      end
+    end
+
     false
   end
 
@@ -67,6 +69,7 @@ module ApplicationHelper
     controller_name == "trips" && action_name.in?(%w[new])
   end
 
+  # タブバー表示設定
   def show_tab_bar?
     if user_signed_in?
       if controller_name == "users"
@@ -88,11 +91,23 @@ module ApplicationHelper
       end
     end
 
+    if controller_name == "account_settings"
+      if action_name.in?(%w[ show ])
+        return true
+      end
+    end
+
+    if controller_name == "posts"
+      if action_name.in?(%w[ index ])
+        return true
+      end
+    end
+
     false
   end
 
   def show_history_button?
-    controller_name == "trips" && action_name.in?(%w[show])
+    controller_name == "trips" && action_name.in?(%w[show]) && @trip.user_id == current_user&.id
   end
 
   def mypage_card(show_elements)
@@ -108,10 +123,18 @@ module ApplicationHelper
   end
 
   def format_duration(seconds)
+    seconds = seconds.to_i
+
     hours = (seconds / 3600) || 0
     minutes = ((seconds % 3600) / 60) || 0
     sec = ((seconds % 3600) % 60) || 0
 
-    "#{hours}時間#{minutes}分#{sec}秒"
+    complete_time = ""
+
+    complete_time << "#{hours}h" if hours > 0
+    complete_time << "#{minutes}m" if minutes > 0
+    complete_time << "#{sec}s" if sec > 0
+
+    complete_time.presence || "0s"
   end
 end

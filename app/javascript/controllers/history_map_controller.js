@@ -1,34 +1,19 @@
-import { Controller } from "@hotwired/stimulus"
+import BaseMapController from "./base_map_controller.js"
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
-import ngeohash from 'ngeohash';
-import * as turf from "@turf/turf"
+import ngeohash from 'ngeohash'
 
 // Connects to data-controller="history-map"
-export default class extends Controller {
-  static outlets = [ "ui", "posts" ]
-  static targets = [ "mapOverlay", "appendMarker" ]
-  static values = { longitude: Number,
-                    latitude: Number,
+export default class extends BaseMapController {
+  static values = { ...BaseMapController.values,
                     visitedGeohashes: Array,
-                    posts: Array,
                   }
 
   async connect(_element) {
-    this.mapInitEnd         = false;
-    this.clearMapOverlayEnd = false;
-    this._onMapClick = null
+    super.connect(); // base mapのconnectを実行
 
-    console.log(this.uiOutlet);
-    // geohashをセット
-    this.cumulativeGeohashes = new Set()
-    this.cumulativeFeature = { value: null };
-    this.setCumulativeGeohashesAndFeature(this.cumulativeGeohashes, this.cumulativeFeature);
+    await this.initVisitedGeohashes();
 
-    const apiKey = this.element.dataset.maptilerKey;
-    // 地図のstyleを取得
-    const res = await fetch(`https://api.maptiler.com/maps/jp-mierune-dark/style.json?key=${apiKey}`);
-    const styleJson = await res.json();
     // 中央位置設定
     if(this.longitudeValue && this.latitudeValue){
       this.center = [ this.longitudeValue, this.latitudeValue ]
@@ -36,209 +21,71 @@ export default class extends Controller {
       this.center = [ 139.745, 35.658 ];
     }
 
-    // this.currentLongitude = this.center[0]
-    // this.currentLatitude = this.center[1]
-    this.uiOutlet.postLongitudeValue = null
-    this.uiOutlet.postLatitudeValue = null
-    // 世界を覆う霧のマスク
-    this.worldFeature = turf.polygon([[
-      [-180, 90],
-      [-180, -90],
-      [180, -90],
-      [180, 90],
-      [-180, 90]
-    ]]);
+    // 地図初期化
+    await this.initializeMap(this.center)
 
-    // 地図の初期化
-    this.map = new maplibregl.Map({
-      container: this.element,
-      style: styleJson,
-      center: this.center,
-      zoom: 18,
-      attributionControl: false,
-    });
+    if (!this.map) return;
 
+    this.fitToVisitedArea();
+
+    // アトリビューション表記
     this.map.addControl(new maplibregl.AttributionControl({ compact: true }), "bottom-right");
 
     // 非表示にする地図上の情報
     const toHide = [
-      "Restaurant and shop",
-      "Store and mall",
-      "Pub",
-      "Hotel",
-      "Generic POI",
-      "Generic POI 11",
-      "Major POI",
-      "Doctor",
-      "Parking",
-      "Government",
-      "Golf pitch",
     ];
 
     // 地図の読み込みが終わった後に実行
     this.map.on('load', () => {
       // 霧を初期化
-      this.fogInit()
+      this.fogInit();
+      this.setupCustomFogLayerEvents();
 
-      toHide.forEach(id => {
-        if (this.map.getLayer(id)) {
-          this.map.setLayoutProperty(id, "visibility", "none");
-        }
-      });
-
-      // this.map.on('move', () => {
-      //   const center = this.map.getCenter();
-      //   this.currentLatitude = center.lat
-      //   this.currentLongitude = center.lng
-      //   this.uiOutlet.longitudeValue = this.currentLongitude
-      //   this.uiOutlet.latitudeValue = this.currentLatitude
-      // })
-      this.executeFogClearing();
-
-      this.addMarkers();
+      this.updateCustomFogLayer();
 
       this.mapInitEnd = true;
       this.maybeClearOverlay();
     })
   }
 
-  enablePostPositionMode(){
-    if(this._onMapClick) return
-
-    if(this.hasPostsOutlet) {
-      this.postsOutlet.lngValue = null;
-      this.postsOutlet.latValue = null;
-    }
-    this.uiOutlet.postLongitudeValue = null;
-    this.uiOutlet.postLatitudeValue = null;
-    this.currentMarker = null;
-
-    this._onMapClick = this.handlePostMapClick.bind(this);
-    this.map.on('click', this._onMapClick);
-  }
-
-  disablePostPositionMode(){
-    if(!this._onMapClick) return;
-
-    this.currentMarker.remove()
-    this.currentMarker = null;
-    this.map.off('click', this._onMapClick);
-    this._onMapClick = null;
-  }
-
-  handlePostMapClick(e){
-    const{ lng, lat } = e.lngLat;
-
-    if (this.currentMarker) {
-      // マーカーがある場合はマーカーの場所を更新
-      this.currentMarker.setLngLat([lng, lat]);
+  async initVisitedGeohashes(){
+    this.visitedGeohashes = new Set();
+    console.log(window.location.pathname.slice(1))
+    if (String(window.location.pathname.slice(1)) === "my_map"){
+      await this.setCumulativeGeohashesAndFeature(this.visitedGeohashes);
     } else {
-      this.currentMarker = new maplibregl.Marker({color: "#00CCFF"})
-        .setLngLat([lng, lat])
-        .addTo(this.map)
-    }
-    if(this.hasPostsOutlet) {
-      this.postsOutlet.lngValue = lng
-      this.postsOutlet.latValue = lat
-    }
-    if(this.hasUiOutlet){
-      this.uiOutlet.postLongitudeValue = lng;
-      this.uiOutlet.postLatitudeValue = lat;
+      this.generateFeatureFromGeohashes(this.visitedGeohashesValue, this.visitedGeohashes);
     }
   }
 
-  addMarkers(){
-    // データがない場合は何もしない
-    if (!this.postsValue.length) return
-
-    this.postsValue.forEach(post => {
-      // 1. ポップアップ（吹き出し）を作る
-      const popup = new maplibregl.Popup({ offset: 25 })
-        .setHTML(`
-          <div class="p-2 text-gray-800">
-            <p class="text-sm mb-1">${post.visited_at ? new Date(post.visited_at).toLocaleDateString() : ''}</p>
-            <p class="font-bold">${post.body}</p>
-          </div>
-        `)
-
-      // マーカーを作成
-      const marker = new maplibregl.Marker({
-        color: "#FF5733", // ピンの色
-        // element: el // 独自画像アイコン
-      })
-      .setLngLat([post.longitude, post.latitude]) // 座標をセット
-      .setPopup(popup) // ポップアップを紐付け
-      .addTo(this.map) // 地図に追加
-    })
-  }
-
-  // 霧の初期化
-  fogInit(){
-    if (!this.map.getSource('fog')) {
-      this.map.addSource('fog', {
-        type: 'geojson',
-        data: this.worldFeature
-      });
-    }
-
-    if (!this.map.getLayer('fog-layer')) {
-      this.map.addLayer({
-        id: 'fog-layer',
-        type: "fill",
-        source: 'fog',
-        paint: {
-          "fill-color": "#ffffff",
-          "fill-opacity": 0.9,
-          'fill-antialias': false,
-        }
-      });
-    }
-  }
-
-  // geohashの部分のポリゴンを作成
-  createPolygonFromGeohash(hash){
-    const [minLat, minLon, maxLat, maxLon] = ngeohash.decode_bbox(hash); // geohashをデコードしてbboxの形式に4点を取得
-    const bbox = [minLon, minLat, maxLon, maxLat]; // turfのbbox用に並び替える
-
-    return turf.bboxPolygon(bbox);
-  }
-
-  // 霧の更新
-  updateFog(geojsonData){
-    if(!this.map.getSource('fog')){
-      this.fogInit();
-    }
-
-    const source = this.map.getSource(`fog`);
-    source.setData(geojsonData);
-  }
-
-  executeFogClearing(){
-    if(this.cumulativeFeature.value .length === 0){
-      console.log("geohashがないので何も実行しません")
-      return;
-    }
-
-    // 世界全体からvisitedを引いて霧を作る
-    const fogPolygon = turf.difference(turf.featureCollection([ this.worldFeature, this.cumulativeFeature.value ]));
-
-    if (fogPolygon) {
-      this.updateFog(fogPolygon);
-    } else {
-      console.log("fogPolygonが見つかりません");
-    }
+  getFogConfig() {
+    return {
+      opacity: 0.6,
+      color: [26/255, 38/255, 52/255]
+    };
   }
 
   clearMapOverlay(){
+    if (!this.hasMapOverlayTarget) return;
+
     const el = this.mapOverlayTarget
 
-    if (!el) return;
+    const removeOverlay = () => {
+      if (el.isConnected) el.remove();
+    };
 
-    el.classList.add("-translate-y-full")
+    const fallbackTimer = setTimeout(removeOverlay, 5000);
 
     el.addEventListener("transitionend", () => {
-      el.remove();
+      clearTimeout(fallbackTimer);
+      removeOverlay();
     }, { once: true })
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        el.classList.add("-translate-y-full");
+      });
+    });
   }
 
   maybeClearOverlay(){
@@ -255,74 +102,47 @@ export default class extends Controller {
     this.maybeClearOverlay();
   }
 
-  appendMarkerTargetConnected(element){
-    console.log("接続ターゲット")
-    const post = JSON.parse(element.dataset.post)
+  setupCustomFogLayerEvents() {
+    // moveendで実行。zoomendも含まれている
+    const updateEvents = ["moveend"];
 
-    const popup = new maplibregl.Popup({ offset: 25 })
-        .setHTML(`
-          <div class="p-2 text-gray-800">
-            <p class="text-sm mb-1">${post.visited_at ? new Date(post.visited_at).toLocaleDateString() : ''}</p>
-            <p class="font-bold">${post.body}</p>
-          </div>
-        `)
-
-      // マーカーを作成
-      const marker = new maplibregl.Marker({
-        color: "#FF5733", // ピンの色
-        // element: el // 独自画像アイコン
-      })
-      .setLngLat([post.longitude, post.latitude]) // 座標をセット
-      .setPopup(popup) // ポップアップを紐付け
-      .addTo(this.map) // 地図に追加
-
-    element.remove() // 使い終わったら消す
+    updateEvents.forEach(eventType => {
+      this.map.on(eventType, () => {
+        // カスタムレイヤーが存在し、かつ表示中であれば更新する
+        if (this.fogCustomLayer && this.visitedGeohashes?.size > 0) {
+          this.updateCustomFogLayer();
+        }
+      });
+    });
   }
 
-  addGeohashesAndGetNew(currentGeohash, visitedGeohashes){
-    if(!currentGeohash) return [];
+  // 地図の全体が映るようにカメラを設定
+  fitToVisitedArea() {
+    if (!this.visitedGeohashes || this.visitedGeohashes.size === 0) return;
 
-    const newGeohashes = [];
+    let minLat = Infinity, minLng = Infinity;
+    let maxLat = -Infinity, maxLng = -Infinity;
 
-    // 現在地の周囲8方向のgeohashを取得
-    const neighbors = ngeohash.neighbors(currentGeohash);
-    const aroundGeohashes = [currentGeohash, ...neighbors];
+    // すべてのGeohashを走査して外郭を探す
+    this.visitedGeohashes.forEach(hash => {
+      const bbox = ngeohash.decode_bbox(hash); // [s, w, n, e]
 
-    // 保持していないものを追加
-    for (const hash of aroundGeohashes) {
-      if (visitedGeohashes.has(hash)) continue // すでに保持していた場合はスキップ
-      visitedGeohashes.add(hash);
-      newGeohashes.push(hash);
-    }
-
-    return newGeohashes
-  }
-
-  // 累計地図セット
-  setCumulativeGeohashesAndFeature(cumulativeGeohashes, cumulativeFeature){
-    this.visitedGeohashesValue.forEach((geohash) => {
-      this.addGeohashesAndGetNew(geohash, cumulativeGeohashes)
+      if (bbox[0] < minLat) minLat = bbox[0];
+      if (bbox[1] < minLng) minLng = bbox[1];
+      if (bbox[2] > maxLat) maxLat = bbox[2];
+      if (bbox[3] > maxLng) maxLng = bbox[3];
     });
 
-    // 今回追加するポリゴンを全て配列にする
-    const polygonsToMerge = [...cumulativeGeohashes].map(hash => this.createPolygonFromGeohash(hash));
-
-    if (polygonsToMerge.length > 1) {
-      // 配列をFeatureCollectionに変換してから、unionに渡す
-      const featureCollection = turf.featureCollection(polygonsToMerge);
-      cumulativeFeature.value = turf.union(featureCollection);
-    } else {
-      cumulativeFeature.value = polygonsToMerge[0];
-    }
-  }
-
-
-
-  disconnect(_element) {
-    console.log("disconnect map controller")
-    if (this.map) {
-      this.map.remove(); // 地図機能の停止、削除
-      console.log("map 消去:", this.map)
-    }
+    // MapLibreのfitBoundsに渡す
+    this.map.fitBounds(
+      [[minLng, minLat], [maxLng, maxLat]],
+      {
+        padding: 50,
+        duration: 0,
+        bearing: 0,
+        pitch: 0,
+        essential: true
+      }
+    );
   }
 }

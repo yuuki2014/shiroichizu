@@ -1,21 +1,27 @@
-<div class="min-h-screen pb-20 bg-gray-100 flex justify-center">
+<div class="h-full pb-20 bg-gray-100 flex justify-center">
 
   <%# 各カードを包むコンテナ %>
   <div class="max-w-md w-full flex flex-col gap-4 p-4">
 
     <%# ユーザープロフィールカード %>
-    <div class="bg-white rounded-xl shadow-md p-4 mb-4 flex items-center">
-      <div class="w-16 h-16 p-1 bg-orange-400 rounded-full flex items-center justify-center">
-        <%= lucide_icon('user-round', class: "w-full h-full text-white") %>
-      </div>
+    <div id="user-profile" class="bg-white rounded-xl shadow-md p-4 mb-4 flex items-center">
+      <% if @user.avatar.attached? %>
+        <div class="w-16 h-16 rounded-full flex items-center justify-center shadow-md">
+          <%= image_tag avatar_url(@user), class: "w-full h-full object-cover rounded-full" %>
+        </div>
+      <% else %>
+        <div class="w-16 h-16 bg-orange-400 rounded-full flex items-center justify-center shadow-md">
+          <%= lucide_icon('user-round', class: "m-1 w-full h-full text-white") %>
+        </div>
+      <% end %>
       <div class="ml-4 flex-1 flex justify-between items-center">
         <div class="text-xl font-bold text-gray-800">
           <%= @user.nickname %>
         </div>
-        <% if current_user&.general? %>
-          <button class="p-2 rounded-full hover:bg-gray-200">
+        <% if current_user&.general? || current_user&.admin? %>
+          <%= link_to edit_profile_path, class: "p-2 rounded-full hover:bg-gray-200", data: { turbo_stream: true } do %>
             <%= lucide_icon('square-pen', class: "text-gray-700")%>
-          </button>
+          <% end %>
         <% end %>
       </div>
     </div>
@@ -26,7 +32,7 @@
         <div class="text-sm text-red-300">
           データが消えないように会員登録をしよう！
         </div>
-        <%= link_to new_registration_path(:user), class: "block w-full" do %>
+        <%= link_to new_email_verification_path, class: "block w-full" do %>
           <div class="bg-gradient-to-b from-orange-300 to-orange-500 text-white text-center font-bold text-lg py-4 rounded-2xl shadow-lg hover:opacity-90 transition">
             新規会員登録（無料）
           </div>
@@ -44,12 +50,12 @@
         tag.span("--", class: "text-gray-900 font-semibold"),
       ] %>
       <%= mypage_card(user_achievements) %>
-    <% elsif current_user&.general? %>
+    <% elsif current_user&.general? || current_user&.admin? %>
       <% user_achievements = [
         tag.span("[累計距離]", class: "") +
-        tag.span("124.5 km / 300 マス", class: "text-gray-900 font-semibold"),
+        tag.span("-- km / -- マス", class: "text-gray-900 font-semibold"),
         tag.span("[開拓エリア]", class: "") +
-        tag.span("東京都、埼玉県", class: "text-gray-900 font-semibold"),
+        tag.span("--", class: "text-gray-900 font-semibold"),
       ] %>
       <%= mypage_card(user_achievements) %>
     <% end %>
@@ -58,15 +64,13 @@
     <%# 各種リンクカード %>
     <% if current_user.guest? %>
       <% account_links = [
-        link_to("・利用規約", terms_path, class: "hover:text-gray-900", data: { turbo_stream: true }),
-        link_to("・プライバシーポリシー", privacy_policy_path, class: "hover:text-gray-900", data: { turbo_stream: true }),
+        link_to("・このサービスについて", about_path, class: "hover:text-gray-900", data: { turbo_stream: true }),
       ] %>
       <%= mypage_card(account_links) %>
-    <% elsif current_user.general? %>
+    <% elsif current_user.general? || current_user.admin? %>
       <% account_links = [
-        link_to("・アカウント設定", "#", class: "hover:text-gray-900"),
-        link_to("・利用規約", terms_path, class: "hover:text-gray-900", data: { turbo_stream: true }),
-        link_to("・プライバシーポリシー", privacy_policy_path, class: "hover:text-gray-900", data: { turbo_stream: true }),
+        link_to("・アカウント設定", account_setting_path, class: "hover:text-gray-900"),
+        link_to("・このサービスについて", about_path, class: "hover:text-gray-900", data: { turbo_stream: true }),
         button_to("・ログアウト", destroy_user_session_path, method: :delete, class: "text-red-500 hover:text-red-700"),
       ] %>
       <%= mypage_card(account_links) %>

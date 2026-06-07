@@ -1,0 +1,90 @@
+<%= turbo_stream.append "modal-container" do %>
+  <div class="fixed inset-0 h-full pointer-events-none w-full z-40 flex justify-center items-stretch sm:items-center opacity-0 transition-all duration-300 p-0 sm:p-4 lg:p-10" data-controller="modal">
+
+    <%# --- バックドロップ --- %>
+    <div class="modal-backdrop absolute inset-0 bg-black/50 z-0 pointer-events-auto" data-modal-target="modalBackdrop" data-action="click->modal#close"></div>
+
+    <%# モーダル枠 %>
+    <div class="relative w-full pointer-events-auto modal-box h-full sm:h-auto bg-[#FFFBE6] max-w-none sm:max-w-5xl max-h-none sm:max-h-[90vh] pt-1 sm:pt-2 pb-6 px-0 sm:px-0  rounded-none sm:rounded-xl gap-4 flex flex-col items-center z-10 transition-all duration-500 ease-out translate-y-40 opacity-0 overflow-hidden" data-modal-target="modalBox">
+
+      <%# --- ヘッダー --- %>
+      <div class="modal-header shrink-0 z-20 w-full px-2 sm:px-4 pt-2">
+        <div class="flex items-center justify-between border-b border-orange-200/60 pb-3">
+
+          <%# 左上コンテナ %>
+          <div class="flex items-center gap-3">
+
+            <%# アイコン %>
+            <% if @post.user.avatar.attached? %>
+              <%= image_tag avatar_url(@post.user), class: "w-10 h-10 object-cover rounded-full shadow-sm" %>
+            <% else %>
+              <div class="w-10 h-10 bg-orange-400 rounded-full flex items-center justify-center shadow-sm">
+                <%= lucide_icon('user-round', class: "w-6 h-6 text-white") %>
+              </div>
+            <% end %>
+
+            <%# ユーザー名と日時 %>
+            <div class="flex flex-col justify-center gap-1">
+              <div class="font-bold text-gray-800 text-base"><%= @post.user.nickname %></div>
+              <div class="text-sm text-gray-500 font-medium">
+                <%= @post.visited_at&.strftime("%Y/%m/%d %H:%M") %>
+              </div>
+            </div>
+
+          </div>
+
+          <%# 右上コンテナ %>
+          <div class="flex items-center gap-3">
+
+            <%# --- 三点リーダボタン --- %>
+            <% if @post.user_id == current_user.id %>
+              <div class="relative" data-controller="dropdown" data-dropdown-post-url-value="<%= confirm_destroy_post_path(@post) %>">
+                <button type="button"
+                        class="h-10 w-10 flex items-center justify-center bg-gray-500/50 hover:bg-gray-600/60 text-white rounded-full transition"
+                        data-action="click->dropdown#toggle">
+                  <%= lucide_icon('ellipsis-vertical', class: "w-6 h-6") %>
+                </button>
+              </div>
+            <% end %>
+
+            <%# --- バツボタン --- %>
+            <button class="h-10 w-10 flex items-center justify-center bg-gray-500/50 hover:bg-gray-600/60 text-white rounded-full transition" data-action="click->modal#close">
+              <%= lucide_icon('x', class: "w-6 h-6") %>
+            </button>
+
+          </div>
+
+        </div>
+      </div>
+
+      <%# --- モーダルの本文と画像枠 --- %>
+      <div class="modal-body flex-1 min-h-0 w-full px-2 sm:px-4 overflow-y-auto">
+
+        <%# 本文 %>
+        <% if @post.body.present? %>
+          <div class="text-gray-800 text-base sm:text-lg whitespace-pre-wrap leading-relaxed mb-6"><%= @post.body %></div>
+        <% end %>
+
+        <%# 画像エリア %>
+        <% if @post.images.attached? %>
+          <div class="w-full">
+
+            <div class="columns-2 sm:columns-3 lg:columns-4 gap-3 sm:gap-4 w-full">
+              <% @post.images.each_with_index do |image, index| %>
+
+                <div class="break-inside-avoid mb-3 sm:mb-4 w-full">
+                  <%= link_to image_viewer_post_path(@post, index: index), data: { turbo_stream: true } do %>
+                    <%= image_tag media_image_url(image.blob.key), loading: "lazy", class: "w-full h-auto object-cover rounded-xl shadow-sm border border-orange-200/50 hover:brightness-50 transition duration-300 cursor-pointer" %>
+                  <% end %>
+                </div>
+
+              <% end %>
+            </div>
+
+          </div>
+        <% end %>
+
+      </div>
+    </div>
+  </div>
+<% end %>
