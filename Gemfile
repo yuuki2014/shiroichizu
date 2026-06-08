@@ -89,7 +89,7 @@ gem "jwt", "~> 3.1"
 
 gem "redis", "~> 5.4"
 
-gem "connection_pool", "< 3.0"
+gem "connection_pool", "< 4.0"
 
 group :development, :test do
   gem "rspec-rails", "~> 8.0"
