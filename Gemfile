@@ -69,7 +69,7 @@ gem "pr_geohash", "~> 1.0"
 
 gem "aws-sdk-s3", require: false
 
-gem "good_job", "~> 4.14"
+gem "good_job", "~> 4.19"
 
 gem "letter_opener_web", "~> 3.0", group: :development
 
