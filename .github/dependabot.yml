@@ -3,10 +3,28 @@ updates:
 - package-ecosystem: bundler
   directory: "/"
   schedule:
-    interval: daily
-  open-pull-requests-limit: 10
+    interval: "weekly"
+    day: "monday"
+    time: "09:00"
+    timezone: "Asia/Tokyo"
+
+  ignore:
+    # connection_pool 3.xは過去にエラーが発生したため保留
+    - dependency-name: "connection_pool"
+      update-types:
+        - "version-update:semver-major"
+
+    # Devise 5.xは破壊的変更の確認が必要なため保留
+    - dependency-name: "devise"
+      update-types:
+        - "version-update:semver-major"
+
+  open-pull-requests-limit: 5
 - package-ecosystem: github-actions
   directory: "/"
   schedule:
-    interval: daily
-  open-pull-requests-limit: 10
+    interval: "weekly"
+    day: "monday"
+    time: "09:00"
+    timezone: "Asia/Tokyo"
+  open-pull-requests-limit: 5
