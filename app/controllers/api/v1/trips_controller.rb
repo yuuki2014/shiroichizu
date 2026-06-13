@@ -1,5 +1,5 @@
 class Api::V1::TripsController < ApplicationController
-  before_action :authenticate_user!
+  before_action :require_user_for_trip
 
   def create
     last_trip = current_user&.trips&.last # 最後の探索を取得
@@ -82,6 +82,12 @@ class Api::V1::TripsController < ApplicationController
   end
 
   private
+
+  def require_user_for_trip
+    return if user_signed_in?
+
+    redirect_to mypage_path, alert: "ゲスト登録かログインが必要です"
+  end
 
   def execute_create_trip
     trip = current_user&.trips&.build
