@@ -61,7 +61,7 @@ end
 gem "tailwindcss-rails"
 gem "tailwindcss-ruby", "3.4.17"
 
-gem "lucide-rails", "~> 0.7.3"
+gem "lucide-rails", "~> 0.7.4"
 
 gem "devise", "~> 4.9"
 
@@ -85,7 +85,7 @@ gem "rack-attack", "~> 6.8"
 
 gem "faraday", "~> 2.14"
 
-gem "jwt", "~> 3.1"
+gem "jwt", "~> 3.2"
 
 gem "redis", "~> 5.4"
 
