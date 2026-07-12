@@ -33,7 +33,7 @@
       data-history-map-longitude-value="<%= @first_footprint&.longitude %>"
       data-history-map-latitude-value="<%= @first_footprint&.latitude %>"
       data-history-map-visited-geohashes-value=""
-      data-history-map-posts-value="<%= @posts.to_json %>"
+      data-history-map-posts-url-value="<%= my_map_path(format: :json) %>"
     >
 
       <%# オーバレイ要素 %>
