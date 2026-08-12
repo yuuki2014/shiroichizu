@@ -1,7 +1,7 @@
 source "https://rubygems.org"
 
 # Bundle edge Rails instead: gem "rails", github: "rails/rails", branch: "main"
-gem "rails", "~> 8.0.0"
+gem "rails", "~> 8.1.0"
 # The original asset pipeline for Rails [https://github.com/rails/sprockets-rails]
 gem "sprockets-rails"
 # Use postgresql as the database for Active Record
@@ -63,7 +63,7 @@ gem "tailwindcss-ruby", "3.4.17"
 
 gem "lucide-rails", "~> 0.7.4"
 
-gem "devise", "~> 4.9"
+gem "devise", "~> 5.0"
 
 gem "pr_geohash", "~> 1.0"
 
