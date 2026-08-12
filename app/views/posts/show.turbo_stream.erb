@@ -37,7 +37,7 @@
           <div class="flex items-center gap-3">
 
             <%# --- 三点リーダボタン --- %>
-            <% if @post.user_id == current_user.id %>
+            <% if user_signed_in? && @post.user_id == current_user.id %>
               <div class="relative" data-controller="dropdown" data-dropdown-post-url-value="<%= confirm_destroy_post_path(@post) %>">
                 <button type="button"
                         class="h-10 w-10 flex items-center justify-center bg-gray-500/50 hover:bg-gray-600/60 text-white rounded-full transition"
