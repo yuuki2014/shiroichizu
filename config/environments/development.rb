@@ -116,4 +116,7 @@ Rails.application.configure do
   # Rails8アップデート時に新規追加
   # 発行したSQLにどこから来たのかという情報をコメントとして付ける設定
   config.active_record.query_log_tags_enabled = true
+
+  # リダイレクト時にコードがどこから実行されたのかログに表示
+  config.action_dispatch.verbose_redirect_logs = true
 end
