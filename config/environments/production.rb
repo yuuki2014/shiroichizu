@@ -140,5 +140,5 @@ Rails.application.configure do
   config.active_storage.track_variants = false
 
   # inspectの表示を抑制
-  config.active_record.attributes_for_inspect = [:id]
+  config.active_record.attributes_for_inspect = [ :id ]
 end
