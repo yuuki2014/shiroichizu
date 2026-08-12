@@ -64,7 +64,7 @@
       <%= yield %>
     </main>
     <% if show_footer? %>
-      <%= render "shared/footer" %>
+      <%= render "shared/footer", trip: (@trip || Trip.new) %>
     <% end %>
     <%= render "bottom_sheets/bottom_sheets_shell" %>
     <%= render "shared/modal_shell" %>
